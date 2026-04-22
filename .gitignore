@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+*.env.local
+logs/
+uploads/
+klary-project/
+klary-project.zip
+.DS_Store
