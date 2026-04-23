@@ -1,0 +1,575 @@
+// ============================================
+// KLARY Database Schema
+// PostgreSQL with Prisma ORM
+// ============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// Core: Users & Organizations
+// ============================================
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  firstName     String    @map("first_name")
+  lastName      String    @map("last_name")
+  role          UserRole  @default(USER)
+  status        UserStatus @default(ACTIVE)
+  
+  // Organization
+  organizationId String?   @map("organization_id")
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  
+  // Security
+  lastLogin     DateTime? @map("last_login")
+  loginAttempts Int       @default(0) @map("login_attempts")
+  lockedUntil   DateTime? @map("locked_until")
+  mfaSecret     String?   @map("mfa_secret")
+  mfaEnabled    Boolean   @default(false) @map("mfa_enabled")
+  
+  // Audit
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  createdBy     String?   @map("created_by")
+  
+  // Relations
+  timeEntries   TimeEntry[]
+  activityLogs  ActivityLog[]
+  advisoryOpportunities AdvisoryOpportunity[]
+  documentRequests DocumentRequest[]
+  
+  @@index([email])
+  @@index([organizationId])
+  @@map("users")
+}
+
+model Organization {
+  id          String   @id @default(uuid())
+  name        String
+  orgNumber   String?  @unique @map("org_number")
+  address     String?
+  city        String?
+  postalCode  String?  @map("postal_code")
+  country     String   @default("SE")
+  
+  // Subscription
+  tier        SubscriptionTier @default(KLARSTART)
+  maxUsers    Int      @default(3) @map("max_users")
+  maxClients  Int      @default(10) @map("max_clients")
+  smsQuota    Int      @default(50) @map("sms_quota")
+  smsUsed     Int      @default(0) @map("sms_used")
+  aiQuota     Int      @default(200) @map("ai_quota")
+  aiUsed      Int      @default(0) @map("ai_used")
+  
+  // Settings
+  timezone    String   @default("Europe/Stockholm")
+  currency    String   @default("SEK")
+  language    String   @default("sv")
+  
+  // Billing
+  stripeCustomerId String? @map("stripe_customer_id")
+  
+  // Audit
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  users       User[]
+  clients     Client[]
+  integrations AccountingIntegration[]
+  
+  @@index([orgNumber])
+  @@map("organizations")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  USER
+  VIEWER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING
+}
+
+enum SubscriptionTier {
+  KLARSTART
+  KLARPRO
+  KLARFIRM
+}
+
+// ============================================
+// Core: Clients
+// ============================================
+
+model Client {
+  id          String   @id @default(uuid())
+  name        String
+  orgNumber   String?  @map("org_number")
+  email       String?
+  phone       String?
+  
+  // Contact
+  contactName String?  @map("contact_name")
+  address     String?
+  city        String?
+  postalCode  String?  @map("postal_code")
+  
+  // Classification
+  industry    String?
+  size        ClientSize @default(SMALL)
+  status      ClientStatus @default(ACTIVE)
+  
+  // Advisory
+  adviceDebt  Float    @default(0) @map("advice_debt")
+  totalBilled Float    @default(0) @map("total_billed")
+  totalAdvice Float    @default(0) @map("total_advice")
+  
+  // Organization
+  organizationId String @map("organization_id")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  // Accounting software link
+  externalId  String?  @map("external_id")
+  
+  // Audit
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  timeEntries TimeEntry[]
+  transactions Transaction[]
+  documentRequests DocumentRequest[]
+  advisoryOpportunities AdvisoryOpportunity[]
+  activities  ClientActivity[]
+  
+  @@index([organizationId])
+  @@index([status])
+  @@map("clients")
+}
+
+enum ClientSize {
+  MICRO    // 1-5 employees
+  SMALL    // 6-20
+  MEDIUM   // 21-100
+  LARGE    // 100+
+}
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+  AT_RISK
+  CHURNED
+}
+
+// ============================================
+// Module 1: Time Tracking
+// ============================================
+
+model TimeEntry {
+  id          String    @id @default(uuid())
+  
+  // Timing
+  startedAt   DateTime  @map("started_at")
+  endedAt     DateTime? @map("ended_at")
+  duration    Int       // in seconds
+  
+  // Categorization (auto-detected or manual)
+  type        TimeEntryType @default(MANUAL)
+  category    String    // e.g., "bookkeeping", "advisory", "compliance"
+  description String?
+  
+  // Billing
+  billable    Boolean   @default(true)
+  hourlyRate  Float?    @map("hourly_rate")
+  billed      Boolean   @default(false)
+  
+  // Auto-tracking metadata
+  source      String?   // "desktop_app", "calendar", "email", "manual"
+  appName     String?   @map("app_name")
+  windowTitle String?   @map("window_title")
+  confidence  Float?    @default(1.0)
+  
+  // Relations
+  userId      String    @map("user_id")
+  user        User      @relation(fields: [userId], references: [id])
+  
+  clientId    String?   @map("client_id")
+  client      Client?   @relation(fields: [clientId], references: [id])
+  
+  // Audit
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  @@index([userId, startedAt])
+  @@index([clientId])
+  @@index([type])
+  @@map("time_entries")
+}
+
+enum TimeEntryType {
+  MANUAL
+  AUTO_TRACKED
+  CALENDAR
+  EMAIL
+  CALL
+  SYSTEM
+}
+
+// ============================================
+// Module 1: Transactions (from accounting software)
+// ============================================
+
+model Transaction {
+  id          String   @id @default(uuid())
+  
+  // Data
+  externalId  String   @map("external_id")
+  amount      Float
+  currency    String   @default("SEK")
+  description String?
+  date        DateTime
+  
+  // AI Categorization
+  suggestedAccount   String? @map("suggested_account")
+  suggestedVatCode   String? @map("suggested_vat_code")
+  suggestedCostCenter String? @map("suggested_cost_center")
+  aiConfidence       Float?  @map("ai_confidence")
+  aiReasoning        String? @map("ai_reasoning")
+  
+  // Final categorization
+  finalAccount       String? @map("final_account")
+  finalVatCode       String? @map("final_vat_code")
+  finalCostCenter    String? @map("final_cost_center")
+  categorizedBy      String? @map("categorized_by") // user ID or "AI"
+  categorizedAt      DateTime? @map("categorized_at")
+  
+  // Status
+  status      TransactionStatus @default(UNCATEGORIZED)
+  
+  // Relations
+  clientId    String  @map("client_id")
+  client      Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  // Source
+  integrationId String @map("integration_id")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@unique([clientId, externalId])
+  @@index([clientId, date])
+  @@index([status])
+  @@map("transactions")
+}
+
+enum TransactionStatus {
+  UNCATEGORIZED
+  AI_SUGGESTED
+  CONFIRMED
+  POSTED
+  FLAGGED
+}
+
+// ============================================
+// Module 2: Advisory Revenue Engine
+// ============================================
+
+model AdvisoryOpportunity {
+  id          String   @id @default(uuid())
+  
+  title       String
+  description String?
+  type        AdvisoryType
+  
+  // Detection
+  detectedAt  DateTime @map("detected_at")
+  detectedBy  String   @map("detected_by") // "AI" or user ID
+  evidence    String?  // JSON: the questions/conversations that triggered
+  
+  // Estimates
+  estimatedHours  Float @map("estimated_hours")
+  estimatedValue  Float @map("estimated_value")
+  actualHours     Float? @map("actual_hours")
+  actualValue     Float? @map("actual_value")
+  
+  // Status
+  status      OpportunityStatus @default(OPEN)
+  priority    Priority @default(MEDIUM)
+  
+  // Resolution
+  resolution  String?  // e.g., "converted", "dismissed", "snoozed"
+  resolvedAt  DateTime? @map("resolved_at")
+  resolvedBy  String?   @map("resolved_by")
+  
+  // Relations
+  clientId    String   @map("client_id")
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  assignedTo  String?  @map("assigned_to")
+  user        User?    @relation(fields: [assignedTo], references: [id])
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@index([clientId, status])
+  @@index([assignedTo, status])
+  @@index([detectedAt])
+  @@map("advisory_opportunities")
+}
+
+enum AdvisoryType {
+  CASH_FLOW
+  TAX_PLANNING
+  VIRTUAL_CFO
+  YEAR_END
+  PAYROLL
+  GROWTH
+  COST_REDUCTION
+  COMPLIANCE
+  CUSTOM
+}
+
+enum OpportunityStatus {
+  OPEN
+  IN_PROGRESS
+  PROPOSAL_SENT
+  CONVERTED
+  DISMISSED
+  SNOOZED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+// ============================================
+// Module 2: Client Activities (for advice detection)
+// ============================================
+
+model ClientActivity {
+  id          String   @id @default(uuid())
+  
+  type        ActivityType
+  content     String   // The message/question content
+  channel     String   // "email", "portal", "call", "meeting"
+  
+  // AI Analysis
+  isAdvisory  Boolean  @default(false) @map("is_advisory")
+  aiConfidence Float?  @map("ai_confidence")
+  topics      String[] // e.g., ["cash_flow", "hiring"]
+  
+  // Relations
+  clientId    String   @map("client_id")
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  @@index([clientId, createdAt])
+  @@index([isAdvisory])
+  @@map("client_activities")
+}
+
+enum ActivityType {
+  EMAIL_RECEIVED
+  EMAIL_SENT
+  PORTAL_MESSAGE
+  CALL
+  MEETING
+n  DOCUMENT_UPLOADED
+  QUESTION_ASKED
+}
+
+// ============================================
+// Module 3: Document Requests (Client Portal)
+// ============================================
+
+model DocumentRequest {
+  id          String   @id @default(uuid())
+  
+  title       String
+  description String?
+  
+  // Template
+  templateType String? @map("template_type") // e.g., "momsredovisning", "arsbokslut"
+  
+  // Request items
+  items       Json     // [{name, description, required, uploaded}]
+  
+  // Delivery
+  channel     String   @default("sms") // "sms", "email", "portal"
+  sentAt      DateTime? @map("sent_at")
+  
+  // Status
+  status      RequestStatus @default(DRAFT)
+  dueDate     DateTime? @map("due_date")
+  completedAt DateTime? @map("completed_at")
+  completionRate Float? @map("completion_rate")
+  
+  // Reminders
+  remindersSent Int @default(0) @map("reminders_sent")
+  lastRemindedAt DateTime? @map("last_reminded_at")
+  
+  // Relations
+  clientId    String   @map("client_id")
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  requestedBy String   @map("requested_by")
+  requester   User     @relation(fields: [requestedBy], references: [id])
+  
+  organizationId String @map("organization_id")
+  
+  // Upload link (for no-login access)
+  uploadToken String? @unique @map("upload_token")
+  tokenExpiry DateTime? @map("token_expiry")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@index([clientId, status])
+  @@index([organizationId])
+  @@index([uploadToken])
+  @@map("document_requests")
+}
+
+enum RequestStatus {
+  DRAFT
+  SENT
+  PARTIAL
+  COMPLETED
+  OVERDUE
+  CANCELLED
+}
+
+// ============================================
+// Uploads (Documents received from clients)
+// ============================================
+
+model Upload {
+  id          String   @id @default(uuid())
+  
+  fileName    String   @map("file_name")
+  fileSize    Int      @map("file_size")
+  mimeType    String   @map("mime_type")
+  filePath    String   @map("file_path")
+  
+  // AI Processing
+  ocrText     String?  @map("ocr_text")
+  documentType String? @map("document_type") // "invoice", "receipt", "bank_statement"
+  aiProcessed Boolean  @default(false) @map("ai_processed")
+  
+  // Source
+  source      String   @default("portal") // "portal", "email", "api"
+  ipAddress   String?  @map("ip_address")
+  
+  // Relations
+  requestId   String?  @map("request_id")
+  clientId    String   @map("client_id")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  @@index([clientId])
+  @@index([requestId])
+  @@map("uploads")
+}
+
+// ============================================
+// Integrations
+// ============================================
+
+model AccountingIntegration {
+  id          String   @id @default(uuid())
+  
+  provider    IntegrationProvider
+  name        String   // e.g., "Fortnox - Main Company"
+  
+  // Auth tokens (encrypted at application level)
+  accessToken String   @map("access_token")
+  refreshToken String? @map("refresh_token")
+  tokenExpiry DateTime? @map("token_expiry")
+  
+  // Settings
+  config      Json?    // Provider-specific settings
+  syncEnabled Boolean  @default(true) @map("sync_enabled")
+  lastSyncAt  DateTime? @map("last_sync_at")
+  
+  // Status
+  status      IntegrationStatus @default(ACTIVE)
+  
+  // Relations
+  organizationId String @map("organization_id")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@unique([organizationId, provider])
+  @@index([organizationId])
+  @@map("accounting_integrations")
+}
+
+enum IntegrationProvider {
+  FORTNOX
+  VISMA_EEKONOMI
+  VISMA_EACCOUNTING
+  BJORN_LUNDEN
+  ECONOMIC
+  TRIPLETEX
+  BOKIO
+  FIKEN
+  DINERO
+  BILLY
+  SIE4_FILE
+}
+
+enum IntegrationStatus {
+  ACTIVE
+  ERROR
+  EXPIRED
+  DISABLED
+}
+
+// ============================================
+// Audit & Security
+// ============================================
+
+model ActivityLog {
+  id          String   @id @default(uuid())
+  
+  action      String   // e.g., "user.login", "document.request.sent", "transaction.categorized"
+  entityType  String   @map("entity_type") // "user", "client", "transaction", etc.
+  entityId    String?  @map("entity_id")
+  
+  details     Json?    // Additional context
+  
+  // IP and device info
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  
+  // Relations
+  userId      String?  @map("user_id")
+  user        User?    @relation(fields: [userId], references: [id])
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  @@index([userId, createdAt])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@map("activity_logs")
+}
