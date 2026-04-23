@@ -57,10 +57,14 @@ router.post('/', async (req: AuthRequest, res, next) => {
   try {
     const data = clientSchema.parse(req.body);
     const client = await prisma.client.create({
-      data: data: {
+      data: {
+  ...data,
+  status: 'ACTIVE',
   organization: {
     connect: { id: req.user!.organizationId }
-  },
+  }
+},
+,
   // ... other fields (keep status, email, name, etc.)
 },
 
