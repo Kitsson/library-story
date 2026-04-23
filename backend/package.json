@@ -28,7 +28,7 @@
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "node-cron": "^3.0.3",
-    "openai": "^4.28.4",
+    "@google/generative-ai": "^0.21.0",
     "twilio": "^5.0.0",
     "uuid": "^9.0.1",
     "winston": "^3.12.0",
