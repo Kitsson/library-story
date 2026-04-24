@@ -46,11 +46,18 @@ export const useAuth = create<AuthState>((set) => ({
     set({ user: null, organization: null, isAuthenticated: false });
   },
 
-  loadUser: async () => {
+   loadUser: async () => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      set({ isLoading: false, isAuthenticated: false });
+      return;
+    }
     try {
       const { data } = await authApi.me();
       set({ user: data.user, organization: data.organization, isAuthenticated: true, isLoading: false });
     } catch {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
       set({ isLoading: false, isAuthenticated: false });
     }
   },
