@@ -56,18 +56,12 @@ router.get('/', async (req: AuthRequest, res, next) => {
 router.post('/', async (req: AuthRequest, res, next) => {
   try {
     const data = clientSchema.parse(req.body);
-    const client = await prisma.client.create({
+        const client = await prisma.client.create({
       data: {
-  ...data,
-  status: 'ACTIVE',
-  organization: {
-    connect: { id: req.user!.organizationId }
-  }
-},
-,
-  // ... other fields (keep status, email, name, etc.)
-},
-
+        ...data,
+        status: 'ACTIVE',
+        organizationId: req.user!.organizationId!,
+      },
     });
     res.status(201).json({ message: 'Client created.', client });
   } catch (e) { next(e); }
