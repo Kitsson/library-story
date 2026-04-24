@@ -35,9 +35,9 @@ function generateTokens(userId: string) {
   );
   const refreshToken = jwt.sign(
     { userId, type: 'refresh' },
-    JWT_SECRET,
-    { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d' }
-  );
+    process.env.JWT_SECRET as string,
+    { expiresIn: '7d' as any }
+);
   return { accessToken, refreshToken };
 }
 
