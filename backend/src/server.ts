@@ -58,10 +58,16 @@ app.use(helmet({
   },
 }));
 
-// CORS: Restrict to known origins
-const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
+// CORS: Restrict to known origins (comma-separated list supported)
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+  .split(',')
+  .map(o => o.trim());
 app.use(cors({
-  origin: corsOrigin,
+  origin: (origin, callback) => {
+    // allow requests with no origin (server-to-server, curl, etc.)
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS: origin ${origin} not allowed`));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
