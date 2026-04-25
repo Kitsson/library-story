@@ -53,21 +53,21 @@ export function RegisterPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="label">First Name</label>
-                <input className="input" value={form.firstName} onChange={e => update('firstName', e.target.value)} required />
+                <input data-testid="register-firstName" className="input" value={form.firstName} onChange={e => update('firstName', e.target.value)} required />
               </div>
               <div>
                 <label className="label">Last Name</label>
-                <input className="input" value={form.lastName} onChange={e => update('lastName', e.target.value)} required />
+                <input data-testid="register-lastName" className="input" value={form.lastName} onChange={e => update('lastName', e.target.value)} required />
               </div>
             </div>
             <div>
               <label className="label">Email</label>
-              <input type="email" className="input" value={form.email} onChange={e => update('email', e.target.value)} required />
+              <input data-testid="register-email" type="email" className="input" value={form.email} onChange={e => update('email', e.target.value)} required />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="label">Firm Name</label>
-                <input className="input" value={form.orgName} onChange={e => update('orgName', e.target.value)} required
+                <input data-testid="register-firmName" className="input" value={form.orgName} onChange={e => update('orgName', e.target.value)} required
                   placeholder="Lindqvist Redovisning" />
               </div>
               <div>
@@ -79,7 +79,7 @@ export function RegisterPage() {
             <div>
               <label className="label">Password (min 12 chars)</label>
               <div className="relative">
-                <input type={showPassword ? 'text' : 'password'} className="input pr-10" value={form.password}
+                <input data-testid="register-password" type={showPassword ? 'text' : 'password'} className="input pr-10" value={form.password}
                   onChange={e => update('password', e.target.value)} required minLength={12} />
                 <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
                   onClick={() => setShowPassword(!showPassword)}>
@@ -89,10 +89,10 @@ export function RegisterPage() {
             </div>
             <div>
               <label className="label">Confirm Password</label>
-              <input type="password" className="input" value={form.confirmPassword}
+              <input data-testid="register-confirmPassword" type="password" className="input" value={form.confirmPassword}
                 onChange={e => update('confirmPassword', e.target.value)} required />
             </div>
-            <button type="submit" className="btn-primary w-full" disabled={loading}>
+            <button data-testid="register-submit" type="submit" className="btn-primary w-full" disabled={loading}>
               {loading ? 'Creating account...' : 'Start Free Trial'}
             </button>
           </form>

@@ -57,6 +57,7 @@ export function Layout() {
                 to={item.path}
                 onClick={() => setSidebarOpen(false)}
                 className={isActive ? 'sidebar-link-active' : 'sidebar-link'}
+                data-testid={`nav-${item.label.toLowerCase().replace(' ', '-')}`}
               >
                 <item.icon className="w-5 h-5" />
                 {item.label}
@@ -76,7 +77,7 @@ export function Layout() {
               <p className="text-xs text-gray-500 truncate">{user?.email}</p>
             </div>
           </div>
-          <button onClick={logout} className="mt-3 flex items-center gap-2 text-sm text-gray-500 hover:text-danger-600 transition-colors w-full">
+          <button data-testid="logout-button" onClick={logout} className="mt-3 flex items-center gap-2 text-sm text-gray-500 hover:text-danger-600 transition-colors w-full">
             <LogOut className="w-4 h-4" /> Log Out
           </button>
         </div>

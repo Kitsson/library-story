@@ -39,13 +39,13 @@ export function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="label">Email</label>
-              <input type="email" className="input" value={email} onChange={e => setEmail(e.target.value)} required
+              <input data-testid="login-email" type="email" className="input" value={email} onChange={e => setEmail(e.target.value)} required
                 placeholder="anna@firm.se" />
             </div>
             <div>
               <label className="label">Password</label>
               <div className="relative">
-                <input type={showPassword ? 'text' : 'password'} className="input pr-10" value={password}
+                <input data-testid="login-password" type={showPassword ? 'text' : 'password'} className="input pr-10" value={password}
                   onChange={e => setPassword(e.target.value)} required placeholder="••••••••" />
                 <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   onClick={() => setShowPassword(!showPassword)}>
@@ -53,7 +53,7 @@ export function LoginPage() {
                 </button>
               </div>
             </div>
-            <button type="submit" className="btn-primary w-full" disabled={loading}>
+            <button data-testid="login-submit" type="submit" className="btn-primary w-full" disabled={loading}>
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
