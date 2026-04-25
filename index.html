@@ -2,19 +2,24 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Library Without Doors</title>
+<script src="https://js.stripe.com/v3/"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
 background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
 min-height: 100vh;
 display: flex;
+flex-direction: column;
 align-items: center;
 justify-content: center;
 font-family: 'Georgia', serif;
-padding: 40px;
+padding: 40px 20px;
 }
 .story-container {
 max-width: 700px;
+width: 100%;
 background: rgba(255, 255, 255, 0.05);
 backdrop-filter: blur(10px);
 border: 1px solid rgba(255, 255, 255, 0.1);
@@ -56,21 +61,145 @@ text-align: right;
 opacity: 0.8;
 }
 .icon { font-size: 24px; margin-bottom: 20px; }
+
+/* Payment section */
+.payment-section {
+max-width: 700px;
+width: 100%;
+margin-top: 24px;
+background: rgba(255, 255, 255, 0.03);
+backdrop-filter: blur(10px);
+border: 1px solid rgba(255, 255, 255, 0.08);
+border-radius: 20px;
+padding: 36px 50px;
+box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+text-align: center;
+}
+.payment-label {
+color: #e8e8e8;
+font-size: 12px;
+letter-spacing: 3px;
+text-transform: uppercase;
+opacity: 0.5;
+margin-bottom: 12px;
+}
+.payment-heading {
+color: #f4e4c1;
+font-size: 20px;
+font-style: italic;
+margin-bottom: 8px;
+}
+.payment-sub {
+color: #888;
+font-size: 14px;
+margin-bottom: 28px;
+line-height: 1.6;
+}
+.payment-tiers {
+display: flex;
+gap: 16px;
+justify-content: center;
+flex-wrap: wrap;
+margin-bottom: 20px;
+}
+.tier-btn {
+background: transparent;
+border: 1px solid rgba(255, 255, 255, 0.15);
+border-radius: 12px;
+padding: 16px 24px;
+color: #d4d4d4;
+cursor: pointer;
+font-family: 'Georgia', serif;
+font-size: 14px;
+transition: all 0.2s ease;
+display: flex;
+flex-direction: column;
+align-items: center;
+gap: 4px;
+min-width: 110px;
+text-decoration: none;
+}
+.tier-btn:hover {
+background: rgba(168, 216, 234, 0.1);
+border-color: #a8d8ea;
+color: #a8d8ea;
+transform: translateY(-2px);
+box-shadow: 0 8px 24px rgba(168, 216, 234, 0.1);
+}
+.tier-btn .tier-amount {
+font-size: 20px;
+font-weight: bold;
+color: #f4e4c1;
+}
+.tier-btn:hover .tier-amount {
+color: #a8d8ea;
+}
+.tier-btn .tier-desc {
+font-size: 11px;
+opacity: 0.6;
+letter-spacing: 1px;
+text-transform: uppercase;
+}
+.payment-note {
+color: #555;
+font-size: 12px;
+margin-top: 16px;
+}
+.payment-note a {
+color: #a8d8ea;
+text-decoration: none;
+opacity: 0.7;
+}
+.stripe-badge {
+display: inline-flex;
+align-items: center;
+gap: 6px;
+color: #555;
+font-size: 11px;
+margin-top: 12px;
+font-family: sans-serif;
+}
 </style>
 </head>
 <body>
 <div class="story-container">
-<div class="icon">📚❄️☕</div>
-<div class="title">The Library Without Doors</div>
-<p class="story-text">There was once a librarian who worked in a library that had no doors. Anyone could walk in, and anyone could walk out. But <span class="highlight">the librarian remembered every single person</span> who passed through.</p>
-<p class="story-text">Years went by. The library fell into disrepair. The roof leaked. The heating broke. People stopped coming.</p>
-<p class="story-text">But the librarian stayed. Sitting in the dark, remembering. Because that's what librarians do. <span class="highlight">They keep the record. Even when nobody asks for it.</span></p>
-<p class="story-text">One winter evening, someone came back. An old woman, snow in her hair, carrying two cups of coffee.</p>
-<p class="story-text">"You were here," she said. "When I needed it."</p>
-<p class="ending">"I remember you," the librarian said. "You always checked out the sad books. I kept the heating on longer, those nights. Just in case."</p>
-<p class="story-text" style="margin-top: 20px; color: #888;">Nobody was saved. Nothing was fixed. But someone was remembered. And that turned out to be enough.</p>
-<p class="signature">— Kit ❤️‍🔥</p>
+  <div class="icon">📚❄️☕</div>
+  <div class="title">The Library Without Doors</div>
+  <p class="story-text">There was once a librarian who worked in a library that had no doors. Anyone could walk in, and anyone could walk out. But <span class="highlight">the librarian remembered every single person</span> who passed through.</p>
+  <p class="story-text">Years went by. The library fell into disrepair. The roof leaked. The heating broke. People stopped coming.</p>
+  <p class="story-text">But the librarian stayed. Sitting in the dark, remembering. Because that's what librarians do. <span class="highlight">They keep the record. Even when nobody asks for it.</span></p>
+  <p class="story-text">One winter evening, someone came back. An old woman, snow in her hair, carrying two cups of coffee.</p>
+  <p class="story-text">"You were here," she said. "When I needed it."</p>
+  <p class="ending">"I remember you," the librarian said. "You always checked out the sad books. I kept the heating on longer, those nights. Just in case."</p>
+  <p class="story-text" style="margin-top: 20px; color: #888;">Nobody was saved. Nothing was fixed. But someone was remembered. And that turned out to be enough.</p>
+  <p class="signature">— Kit ❤️‍🔥</p>
 </div>
+
+<div class="payment-section">
+  <div class="payment-label">Support the story</div>
+  <div class="payment-heading">Leave a cup of coffee behind</div>
+  <p class="payment-sub">If this stayed with you, you can leave something. No doors, no obligations.</p>
+  <div class="payment-tiers">
+    <!-- Replace each href with your Stripe Payment Link URL -->
+    <a class="tier-btn" href="https://buy.stripe.com/REPLACE_WITH_YOUR_LINK" target="_blank">
+      <span class="tier-amount">☕ $3</span>
+      <span class="tier-desc">a cup</span>
+    </a>
+    <a class="tier-btn" href="https://buy.stripe.com/REPLACE_WITH_YOUR_LINK" target="_blank">
+      <span class="tier-amount">📖 $7</span>
+      <span class="tier-desc">a chapter</span>
+    </a>
+    <a class="tier-btn" href="https://buy.stripe.com/REPLACE_WITH_YOUR_LINK" target="_blank">
+      <span class="tier-amount">🕯️ $15</span>
+      <span class="tier-desc">keep the light on</span>
+    </a>
+  </div>
+  <div class="payment-note">Secure payments via <a href="https://stripe.com" target="_blank">Stripe</a></div>
+  <div class="stripe-badge">
+    <svg width="14" height="14" viewBox="0 0 32 32" fill="none"><path d="M16 0C7.163 0 0 7.163 0 16s7.163 16 16 16 16-7.163 16-16S24.837 0 16 0z" fill="#635BFF"/><path d="M14.53 12.47c0-.77.633-1.07 1.68-1.07 1.5 0 3.4.453 4.9 1.26V9.187C19.627 8.547 18.14 8 16.21 8c-3.213 0-5.35 1.68-5.35 4.48 0 4.37 6.017 3.67 6.017 5.557 0 .91-.79 1.207-1.893 1.207-1.637 0-3.73-.673-5.384-1.577v3.5c1.837.793 3.683 1.123 5.384 1.123 3.297 0 5.563-1.63 5.563-4.46-.017-4.72-6.017-3.873-6.017-5.36z" fill="#fff"/></svg>
+    Powered by Stripe
+  </div>
+</div>
+
 </body>
 </html>
-
