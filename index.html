@@ -1,205 +1,617 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Library Without Doors</title>
-<script src="https://js.stripe.com/v3/"></script>
-<style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body {
-background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-min-height: 100vh;
-display: flex;
-flex-direction: column;
-align-items: center;
-justify-content: center;
-font-family: 'Georgia', serif;
-padding: 40px 20px;
-}
-.story-container {
-max-width: 700px;
-width: 100%;
-background: rgba(255, 255, 255, 0.05);
-backdrop-filter: blur(10px);
-border: 1px solid rgba(255, 255, 255, 0.1);
-border-radius: 20px;
-padding: 50px;
-box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-}
-.title {
-color: #e8e8e8;
-font-size: 14px;
-letter-spacing: 3px;
-text-transform: uppercase;
-margin-bottom: 30px;
-opacity: 0.6;
-}
-.story-text {
-color: #d4d4d4;
-font-size: 18px;
-line-height: 1.8;
-margin-bottom: 20px;
-}
-.highlight {
-color: #f4e4c1;
-font-style: italic;
-}
-.ending {
-color: #a8d8ea;
-font-size: 16px;
-margin-top: 30px;
-padding-top: 20px;
-border-top: 1px solid rgba(255, 255, 255, 0.1);
-font-style: italic;
-}
-.signature {
-color: #ff6b6b;
-font-size: 12px;
-margin-top: 30px;
-text-align: right;
-opacity: 0.8;
-}
-.icon { font-size: 24px; margin-bottom: 20px; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KLARY — Reclaim 18 Hours a Week. Without Hiring Anyone.</title>
+  <meta name="description" content="The intelligence layer for accounting firms. Auto-time tracking, AI transaction categorization, and advisory revenue detection.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    :root {
+      --bg: #FAFAF7; --bg-warm: #F5F4F0; --bg-card: #FFFFFF;
+      --text: #1C1917; --text-secondary: #78716C; --text-muted: #A8A29E;
+      --accent: #0D7377; --accent-light: #E6F4F4; --accent-dark: #095C5F;
+      --border: #E7E5E4; --border-light: #F0EEEB;
+      --success: #16A34A; --warning: #D97706; --danger: #DC2626;
+      --shadow: 0 4px 24px rgba(28,25,23,0.06);
+      --shadow-lg: 0 12px 48px rgba(28,25,23,0.08);
+      --radius: 12px; --radius-sm: 8px; --max-width: 1200px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    img { max-width: 100%; display: block; }
+    a { color: inherit; text-decoration: none; }
+    .container { max-width: var(--max-width); margin: 0 auto; padding: 0 1.5rem; }
+    .section { padding: 6rem 0; }
+    .section-sm { padding: 4rem 0; }
+    .grid { display: grid; }
+    .grid-2 { grid-template-columns: 1fr; }
+    .grid-3 { grid-template-columns: 1fr; }
+    .gap-4 { gap: 1rem; } .gap-6 { gap: 1.5rem; } .gap-8 { gap: 2rem; }
+    .flex { display: flex; } .flex-col { flex-direction: column; }
+    .items-center { align-items: center; } .justify-between { justify-content: space-between; }
+    .justify-center { justify-content: center; } .flex-wrap { flex-wrap: wrap; }
 
-/* Payment section */
-.payment-section {
-max-width: 700px;
-width: 100%;
-margin-top: 24px;
-background: rgba(255, 255, 255, 0.03);
-backdrop-filter: blur(10px);
-border: 1px solid rgba(255, 255, 255, 0.08);
-border-radius: 20px;
-padding: 36px 50px;
-box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-text-align: center;
-}
-.payment-label {
-color: #e8e8e8;
-font-size: 12px;
-letter-spacing: 3px;
-text-transform: uppercase;
-opacity: 0.5;
-margin-bottom: 12px;
-}
-.payment-heading {
-color: #f4e4c1;
-font-size: 20px;
-font-style: italic;
-margin-bottom: 8px;
-}
-.payment-sub {
-color: #888;
-font-size: 14px;
-margin-bottom: 28px;
-line-height: 1.6;
-}
-.payment-tiers {
-display: flex;
-gap: 16px;
-justify-content: center;
-flex-wrap: wrap;
-margin-bottom: 20px;
-}
-.tier-btn {
-background: transparent;
-border: 1px solid rgba(255, 255, 255, 0.15);
-border-radius: 12px;
-padding: 16px 24px;
-color: #d4d4d4;
-cursor: pointer;
-font-family: 'Georgia', serif;
-font-size: 14px;
-transition: all 0.2s ease;
-display: flex;
-flex-direction: column;
-align-items: center;
-gap: 4px;
-min-width: 110px;
-text-decoration: none;
-}
-.tier-btn:hover {
-background: rgba(168, 216, 234, 0.1);
-border-color: #a8d8ea;
-color: #a8d8ea;
-transform: translateY(-2px);
-box-shadow: 0 8px 24px rgba(168, 216, 234, 0.1);
-}
-.tier-btn .tier-amount {
-font-size: 20px;
-font-weight: bold;
-color: #f4e4c1;
-}
-.tier-btn:hover .tier-amount {
-color: #a8d8ea;
-}
-.tier-btn .tier-desc {
-font-size: 11px;
-opacity: 0.6;
-letter-spacing: 1px;
-text-transform: uppercase;
-}
-.payment-note {
-color: #555;
-font-size: 12px;
-margin-top: 16px;
-}
-.payment-note a {
-color: #a8d8ea;
-text-decoration: none;
-opacity: 0.7;
-}
-.stripe-badge {
-display: inline-flex;
-align-items: center;
-gap: 6px;
-color: #555;
-font-size: 11px;
-margin-top: 12px;
-font-family: sans-serif;
-}
-</style>
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+      padding: 0.875rem 2rem; font-size: 0.9375rem; font-weight: 600;
+      border-radius: var(--radius-sm); transition: all 0.2s ease; cursor: pointer; border: none; white-space: nowrap;
+    }
+    .btn-primary { background: var(--accent); color: white; box-shadow: 0 2px 8px rgba(13,115,119,0.25); }
+    .btn-primary:hover { background: var(--accent-dark); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(13,115,119,0.35); }
+    .btn-secondary { background: var(--bg-card); color: var(--text); border: 1.5px solid var(--border); }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-sm { padding: 0.625rem 1.25rem; font-size: 0.875rem; }
+
+    .card { background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius); padding: 2rem; transition: all 0.2s ease; }
+    .card:hover { border-color: var(--border); box-shadow: var(--shadow); }
+
+    .tag { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.375rem 0.875rem; font-size: 0.8125rem; font-weight: 500; color: var(--accent); background: var(--accent-light); border-radius: 100px; }
+    .tag-green { color: var(--success); background: #DCFCE7; }
+    .sep { width: 48px; height: 2px; background: var(--accent); border-radius: 2px; }
+
+    .nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: rgba(250,250,247,0.92); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border-light); }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+    .nav-links { display: none; align-items: center; gap: 2rem; }
+    .nav-links a { font-size: 0.875rem; font-weight: 500; color: var(--text-secondary); transition: color 0.2s; }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta { display: none; }
+
+    .hero { padding-top: 120px; padding-bottom: 4rem; }
+    .hero-grid { display: grid; grid-template-columns: 1fr; gap: 3rem; align-items: center; }
+    .hero-proof { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .hero-proof-logos { display: flex; align-items: center; }
+    .hero-proof-logos span { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: var(--bg-card); border: 2px solid var(--bg); border-radius: 50%; font-size: 0.625rem; font-weight: 700; color: var(--text-secondary); margin-left: -8px; }
+    .hero-proof-logos span:first-child { margin-left: 0; }
+    .hero-proof-text { font-size: 0.8125rem; color: var(--text-muted); }
+    .hero-headline { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 800; line-height: 1.1; letter-spacing: -0.03em; margin-bottom: 1.25rem; }
+    .hero-headline em { font-style: normal; color: var(--accent); }
+    .hero-sub { font-size: 1.125rem; color: var(--text-secondary); line-height: 1.7; max-width: 520px; margin-bottom: 2rem; }
+    .hero-cta-group { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
+    .hero-guarantee { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; color: var(--text-muted); }
+    .hero-dashboard { position: relative; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-lg); border: 1px solid var(--border); }
+
+    .dash-frame { background: var(--bg-card); border-radius: var(--radius); overflow: hidden; }
+    .dash-header { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-light); }
+    .dash-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dash-dot-r { background: #EF4444; } .dash-dot-y { background: #F59E0B; } .dash-dot-g { background: #10B981; }
+    .dash-title { font-size: 0.6875rem; font-weight: 600; color: var(--text-muted); margin-left: 0.5rem; }
+    .dash-body { display: grid; grid-template-columns: 180px 1fr; min-height: 360px; }
+    .dash-sidebar { background: #FAFAFA; border-right: 1px solid var(--border-light); padding: 1rem; }
+    .dash-logo { display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 0.875rem; margin-bottom: 1.5rem; }
+    .dash-nav-item { display: flex; align-items: center; gap: 0.625rem; padding: 0.5rem 0.625rem; font-size: 0.8125rem; color: var(--text-secondary); border-radius: 6px; margin-bottom: 2px; }
+    .dash-nav-item.active { background: var(--accent-light); color: var(--accent); font-weight: 600; }
+    .dash-main { padding: 1.25rem; }
+    .dash-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1rem; }
+    .dash-stat { padding: 0.75rem; background: var(--bg); border-radius: var(--radius-sm); }
+    .dash-stat-label { font-size: 0.6875rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; }
+    .dash-stat-value { font-size: 1.125rem; font-weight: 700; }
+    .dash-alert { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.875rem; background: #FEF3C7; border-radius: var(--radius-sm); margin-bottom: 1rem; }
+    .dash-alert-text { font-size: 0.8125rem; color: #92400E; }
+    .dash-alert-title { font-weight: 600; margin-bottom: 0.125rem; }
+    .dash-table-header { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; padding: 0.5rem 0; border-bottom: 1px solid var(--border-light); font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+    .dash-table-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; padding: 0.625rem 0; border-bottom: 1px solid var(--border-light); font-size: 0.8125rem; }
+    .dash-badge { display: inline-flex; padding: 0.125rem 0.5rem; font-size: 0.6875rem; font-weight: 600; border-radius: 100px; }
+    .dash-badge-ai { background: var(--accent-light); color: var(--accent); }
+    .dash-badge-done { background: #DCFCE7; color: var(--success); }
+
+    .problem-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+    .problem-card { padding: 1.5rem; border-radius: var(--radius); border: 1px solid var(--border-light); background: var(--bg-card); }
+    .problem-card-num { font-size: 2.5rem; font-weight: 800; color: var(--accent); opacity: 0.3; line-height: 1; margin-bottom: 0.75rem; }
+    .problem-card-title { font-weight: 600; margin-bottom: 0.375rem; }
+    .problem-card-desc { font-size: 0.875rem; color: var(--text-secondary); }
+
+    .solution-card { padding: 2rem; border-radius: var(--radius); border: 1px solid var(--border-light); background: var(--bg-card); transition: all 0.25s ease; }
+    .solution-card:hover { border-color: var(--accent); box-shadow: var(--shadow); transform: translateY(-2px); }
+    .solution-icon { width: 44px; height: 44px; border-radius: var(--radius-sm); background: var(--accent-light); display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem; }
+    .solution-icon svg { width: 22px; height: 22px; color: var(--accent); }
+    .solution-card h3 { font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem; }
+    .solution-card p { font-size: 0.9375rem; color: var(--text-secondary); line-height: 1.6; }
+
+    .stats-bar { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem; padding: 2.5rem; background: var(--text); border-radius: var(--radius); }
+    .stat-item { text-align: center; }
+    .stat-value { font-size: 2rem; font-weight: 800; color: white; letter-spacing: -0.02em; }
+    .stat-label { font-size: 0.8125rem; color: #A8A29E; margin-top: 0.25rem; }
+
+    .testimonial { padding: 2rem; background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius); }
+    .testimonial-quote { font-size: 1rem; line-height: 1.7; margin-bottom: 1.5rem; position: relative; padding-left: 1.25rem; border-left: 3px solid var(--accent); }
+    .testimonial-author { display: flex; align-items: center; gap: 0.875rem; }
+    .testimonial-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--accent-light); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.875rem; color: var(--accent); }
+    .testimonial-name { font-weight: 600; font-size: 0.9375rem; }
+    .testimonial-role { font-size: 0.8125rem; color: var(--text-muted); }
+
+    .pricing-toggle { display: inline-flex; align-items: center; gap: 1rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 100px; padding: 0.375rem; margin-top: 1.5rem; }
+    .pricing-toggle-btn { padding: 0.5rem 1.25rem; border-radius: 100px; font-size: 0.875rem; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--text-secondary); transition: all 0.2s; }
+    .pricing-toggle-btn.active { background: var(--accent); color: white; }
+    .pricing-toggle-save { font-size: 0.75rem; color: var(--success); font-weight: 600; }
+
+    .pricing-card { padding: 2rem; border-radius: var(--radius); border: 1.5px solid var(--border-light); background: var(--bg-card); transition: all 0.25s ease; position: relative; }
+    .pricing-card:hover { border-color: var(--border); box-shadow: var(--shadow); }
+    .pricing-card.featured { border-color: var(--accent); box-shadow: 0 4px 24px rgba(13,115,119,0.1); }
+    .pricing-card.featured::before { content: 'Most Popular'; position: absolute; top: -1px; left: 50%; transform: translateX(-50%); background: var(--accent); color: white; font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 0.25rem 1rem; border-radius: 0 0 6px 6px; }
+    .pricing-tier { font-size: 0.875rem; font-weight: 600; color: var(--accent); margin-bottom: 0.5rem; }
+    .pricing-price { font-size: 2.5rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 0.25rem; }
+    .pricing-period { font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1.5rem; }
+    .pricing-features { list-style: none; margin-bottom: 1.5rem; }
+    .pricing-features li { display: flex; align-items: flex-start; gap: 0.625rem; padding: 0.5rem 0; font-size: 0.875rem; color: var(--text-secondary); border-bottom: 1px solid var(--border-light); }
+    .pricing-features li:last-child { border-bottom: none; }
+    .pricing-features svg { width: 16px; height: 16px; color: var(--accent); flex-shrink: 0; margin-top: 2px; }
+    .pricing-btn { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.875rem 2rem; font-size: 0.9375rem; font-weight: 600; border-radius: var(--radius-sm); transition: all 0.2s ease; cursor: pointer; border: none; white-space: nowrap; }
+    .pricing-btn-primary { background: var(--accent); color: white; box-shadow: 0 2px 8px rgba(13,115,119,0.25); }
+    .pricing-btn-primary:hover { background: var(--accent-dark); transform: translateY(-1px); }
+    .pricing-btn-secondary { background: var(--bg-card); color: var(--text); border: 1.5px solid var(--border); }
+    .pricing-btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+    .pricing-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
+    .pricing-btn-loading { position: relative; color: transparent !important; }
+    .pricing-btn-loading::after { content: ''; position: absolute; width: 20px; height: 20px; border: 2px solid white; border-right-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .logo-grid { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2rem; }
+    .logo-item { display: flex; align-items: center; justify-content: center; height: 40px; padding: 0 1.25rem; background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius-sm); font-size: 0.8125rem; font-weight: 600; color: var(--text-secondary); transition: all 0.2s ease; }
+    .logo-item:hover { border-color: var(--accent); color: var(--accent); }
+
+    .faq-item { border-bottom: 1px solid var(--border-light); }
+    .faq-question { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 0; font-weight: 600; cursor: pointer; transition: color 0.2s; }
+    .faq-question:hover { color: var(--accent); }
+    .faq-icon { width: 20px; height: 20px; transition: transform 0.3s ease; flex-shrink: 0; margin-left: 1rem; }
+    .faq-item.open .faq-icon { transform: rotate(45deg); }
+    .faq-answer { max-height: 0; overflow: hidden; transition: max-height 0.3s ease, padding 0.3s ease; }
+    .faq-item.open .faq-answer { max-height: 300px; padding-bottom: 1.25rem; }
+    .faq-answer p { font-size: 0.9375rem; color: var(--text-secondary); line-height: 1.7; }
+
+    .cta-section { background: var(--accent); border-radius: var(--radius); padding: 4rem 2rem; text-align: center; color: white; }
+    .cta-section h2 { font-size: clamp(1.5rem, 4vw, 2.5rem); font-weight: 800; margin-bottom: 1rem; letter-spacing: -0.02em; }
+    .cta-section p { font-size: 1.0625rem; opacity: 0.9; margin-bottom: 2rem; max-width: 500px; margin-left: auto; margin-right: auto; }
+    .cta-btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 1rem 2.5rem; background: white; color: var(--accent); font-size: 1rem; font-weight: 700; border-radius: var(--radius-sm); border: none; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+    .cta-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+
+    .footer { border-top: 1px solid var(--border-light); padding: 3rem 0; }
+    .footer-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; }
+    .footer-brand { font-weight: 800; font-size: 1.125rem; margin-bottom: 0.5rem; }
+    .footer-desc { font-size: 0.875rem; color: var(--text-muted); max-width: 280px; }
+    .footer-links h4 { font-size: 0.8125rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1rem; color: var(--text); }
+    .footer-links a { display: block; font-size: 0.875rem; color: var(--text-secondary); padding: 0.25rem 0; transition: color 0.2s; }
+    .footer-links a:hover { color: var(--accent); }
+    .footer-bottom { margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--border-light); font-size: 0.8125rem; color: var(--text-muted); }
+
+    .fade-in { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
+    .fade-in.visible { opacity: 1; transform: translateY(0); }
+
+    .mobile-toggle { display: flex; flex-direction: column; gap: 4px; background: none; border: none; cursor: pointer; padding: 4px; }
+    .mobile-toggle span { display: block; width: 20px; height: 2px; background: var(--text); border-radius: 2px; }
+
+    @media (min-width: 768px) {
+      .grid-2 { grid-template-columns: repeat(2, 1fr); }
+      .grid-3 { grid-template-columns: repeat(3, 1fr); }
+      .hero-grid { grid-template-columns: 1fr 1.1fr; gap: 4rem; }
+      .dash-body { grid-template-columns: 160px 1fr; }
+      .nav-links, .nav-cta { display: flex; }
+      .mobile-toggle { display: none; }
+      .stats-bar { grid-template-columns: repeat(4, 1fr); }
+      .footer-grid { grid-template-columns: 2fr 1fr 1fr 1fr; }
+    }
+    @media (max-width: 767px) {
+      .section { padding: 3rem 0; }
+      .hero { padding-top: 80px; }
+      .dash-body { grid-template-columns: 1fr; }
+      .dash-sidebar { display: none; }
+      .dash-stats { grid-template-columns: 1fr; }
+      .dash-table-header, .dash-table-row { display: none; }
+      .cta-section { padding: 2.5rem 1.5rem; }
+    }
+  </style>
 </head>
 <body>
-<div class="story-container">
-  <div class="icon">📚❄️☕</div>
-  <div class="title">The Library Without Doors</div>
-  <p class="story-text">There was once a librarian who worked in a library that had no doors. Anyone could walk in, and anyone could walk out. But <span class="highlight">the librarian remembered every single person</span> who passed through.</p>
-  <p class="story-text">Years went by. The library fell into disrepair. The roof leaked. The heating broke. People stopped coming.</p>
-  <p class="story-text">But the librarian stayed. Sitting in the dark, remembering. Because that's what librarians do. <span class="highlight">They keep the record. Even when nobody asks for it.</span></p>
-  <p class="story-text">One winter evening, someone came back. An old woman, snow in her hair, carrying two cups of coffee.</p>
-  <p class="story-text">"You were here," she said. "When I needed it."</p>
-  <p class="ending">"I remember you," the librarian said. "You always checked out the sad books. I kept the heating on longer, those nights. Just in case."</p>
-  <p class="story-text" style="margin-top: 20px; color: #888;">Nobody was saved. Nothing was fixed. But someone was remembered. And that turned out to be enough.</p>
-  <p class="signature">— Kit ❤️‍🔥</p>
-</div>
 
-<div class="payment-section">
-  <div class="payment-label">Support the story</div>
-  <div class="payment-heading">Leave a cup of coffee behind</div>
-  <p class="payment-sub">If this stayed with you, you can leave something. No doors, no obligations.</p>
-  <div class="payment-tiers">
-    <!-- Replace each href with your Stripe Payment Link URL -->
-    <a class="tier-btn" href="https://buy.stripe.com/REPLACE_WITH_YOUR_LINK" target="_blank">
-      <span class="tier-amount">☕ $3</span>
-      <span class="tier-desc">a cup</span>
-    </a>
-    <a class="tier-btn" href="https://buy.stripe.com/REPLACE_WITH_YOUR_LINK" target="_blank">
-      <span class="tier-amount">📖 $7</span>
-      <span class="tier-desc">a chapter</span>
-    </a>
-    <a class="tier-btn" href="https://buy.stripe.com/REPLACE_WITH_YOUR_LINK" target="_blank">
-      <span class="tier-amount">🕯️ $15</span>
-      <span class="tier-desc">keep the light on</span>
-    </a>
-  </div>
-  <div class="payment-note">Secure payments via <a href="https://stripe.com" target="_blank">Stripe</a></div>
-  <div class="stripe-badge">
-    <svg width="14" height="14" viewBox="0 0 32 32" fill="none"><path d="M16 0C7.163 0 0 7.163 0 16s7.163 16 16 16 16-7.163 16-16S24.837 0 16 0z" fill="#635BFF"/><path d="M14.53 12.47c0-.77.633-1.07 1.68-1.07 1.5 0 3.4.453 4.9 1.26V9.187C19.627 8.547 18.14 8 16.21 8c-3.213 0-5.35 1.68-5.35 4.48 0 4.37 6.017 3.67 6.017 5.557 0 .91-.79 1.207-1.893 1.207-1.637 0-3.73-.673-5.384-1.577v3.5c1.837.793 3.683 1.123 5.384 1.123 3.297 0 5.563-1.63 5.563-4.46-.017-4.72-6.017-3.873-6.017-5.36z" fill="#fff"/></svg>
-    Powered by Stripe
-  </div>
-</div>
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a href="#" style="display:flex;align-items:center;gap:0.5rem;font-weight:800;font-size:1.125rem;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="color:var(--accent);"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="currentColor"/></svg>
+        KLARY
+      </a>
+      <div class="nav-links">
+        <a href="#problem">The Problem</a>
+        <a href="#solution">Solution</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQ</a>
+      </div>
+      <div class="nav-cta" style="display:flex;align-items:center;gap:1rem;">
+        <a href="https://library-story-production.up.railway.app/login" style="font-size:0.875rem;font-weight:500;color:var(--text-secondary);">Log in</a>
+        <a href="#pricing" class="btn btn-sm btn-primary">Start Free Trial</a>
+      </div>
+      <button class="mobile-toggle" onclick="document.querySelector('.nav-links').style.display = document.querySelector('.nav-links').style.display === 'flex' ? 'none' : 'flex'"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
 
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-grid">
+        <div class="fade-in">
+          <div class="hero-proof">
+            <div class="hero-proof-logos"><span>FL</span><span>VL</span><span>BL</span><span>EC</span></div>
+            <span class="hero-proof-text">Works with Fortnox, Visma, Björn Lundén, e-conomic & more</span>
+          </div>
+          <h1 class="hero-headline">Reclaim <em>18 hours</em> every week. Without hiring anyone.</h1>
+          <p class="hero-sub">KLARY is the intelligence layer that sits on top of your accounting software. It automatically tracks your time, categorizes transactions with AI, and turns your "free advice" into billable advisory revenue.</p>
+          <div class="hero-cta-group">
+            <a href="#pricing" class="btn btn-primary">Start 14-Day Free Trial — No Card Required</a>
+            <a href="#demo" class="btn btn-secondary">Watch 2-Min Demo</a>
+          </div>
+          <div class="hero-guarantee">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Cancel anytime. 795 kr/month after trial. GDPR compliant. Data stays in the EU.
+          </div>
+        </div>
+        <div class="hero-dashboard fade-in" style="transition-delay:0.15s;">
+          <div class="dash-frame">
+            <div class="dash-header"><span class="dash-dot dash-dot-r"></span><span class="dash-dot dash-dot-y"></span><span class="dash-dot dash-dot-g"></span><span class="dash-title">KLARY Dashboard</span></div>
+            <div class="dash-body">
+              <div class="dash-sidebar">
+                <div class="dash-logo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="color:var(--accent);"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="currentColor"/></svg>KLARY</div>
+                <div class="dash-nav-item active"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard</div>
+                <div class="dash-nav-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Clients</div>
+                <div class="dash-nav-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Time Tracking</div>
+                <div class="dash-nav-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Transactions</div>
+                <div class="dash-nav-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>Advisory</div>
+              </div>
+              <div class="dash-main">
+                <div class="dash-stats">
+                  <div class="dash-stat"><div class="dash-stat-label">Time This Week</div><div class="dash-stat-value" style="color:var(--accent);">32.5h</div></div>
+                  <div class="dash-stat"><div class="dash-stat-label">Billable</div><div class="dash-stat-value" style="color:var(--success);">28.2h</div></div>
+                  <div class="dash-stat"><div class="dash-stat-label">Advisory Value</div><div class="dash-stat-value" style="color:var(--warning);">87k SEK</div></div>
+                </div>
+                <div class="dash-alert">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" style="flex-shrink:0;margin-top:2px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  <div class="dash-alert-text"><div class="dash-alert-title">Advisory Opportunity Detected</div>Byggkonsult AB has asked 12 strategy questions this quarter. Estimated value: 8,500 kr/month.</div>
+                </div>
+                <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:0.5rem;">AI-Categorized Transactions</div>
+                <div class="dash-table-header"><span>Description</span><span>Amount</span><span>Account</span><span>Status</span></div>
+                <div class="dash-table-row"><span>Restaurant supplies — Lunden</span><span>4,250 kr</span><span><span class="dash-badge dash-badge-ai">6100</span></span><span><span class="dash-badge dash-badge-done">Confirmed</span></span></div>
+                <div class="dash-table-row"><span>Office rent Q2</span><span>18,500 kr</span><span><span class="dash-badge dash-badge-ai">7210</span></span><span><span class="dash-badge dash-badge-done">Posted</span></span></div>
+                <div class="dash-table-row"><span>Consulting fee — Nordtech</span><span>12,000 kr</span><span><span class="dash-badge dash-badge-ai">3010</span></span><span><span class="dash-badge dash-badge-ai">Review</span></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Trust Bar -->
+  <section style="padding: 2rem 0; border-top: 1px solid var(--border-light);">
+    <div class="container">
+      <div style="text-align:center;margin-bottom:1.5rem;"><span class="text-sm text-muted tracking-wide" style="text-transform:uppercase;font-weight:600;">Integrates with the tools you already use</span></div>
+      <div class="logo-grid">
+        <div class="logo-item">Fortnox</div><div class="logo-item">Visma</div><div class="logo-item">Björn Lundén</div>
+        <div class="logo-item">e-conomic</div><div class="logo-item">Tripletex</div><div class="logo-item">Bokio</div><div class="logo-item">SIE4</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Problem Section -->
+  <section id="problem" class="section" style="background:var(--bg-warm);">
+    <div class="container">
+      <div style="max-width:640px;margin-bottom:3rem;">
+        <div class="sep" style="margin-bottom:1.5rem;"></div>
+        <h2 class="text-4xl font-extrabold tracking-tight" style="margin-bottom:1rem;">You're losing half your workday to tasks that shouldn't exist.</h2>
+        <p class="text-lg text-secondary">We studied 35,000+ accounting firms across Scandinavia. The numbers are brutal — but they explain why you're exhausted every Friday.</p>
+      </div>
+      <div class="problem-grid">
+        <div class="problem-card fade-in"><div class="problem-card-num">01</div><div class="problem-card-title">40% of your time disappears into data entry</div><div class="problem-card-desc">The average accountant spends 16 hours per week on manual data entry, transaction categorization, and document filing. That's two full workdays — gone.</div></div>
+        <div class="problem-card fade-in" style="transition-delay:0.1s;"><div class="problem-card-num">02</div><div class="problem-card-title">"Quick questions" cost you 60 hours per season</div><div class="problem-card-desc">Every "just a quick question" email from clients adds up. Most firms give away 60+ hours of advisory expertise per tax season — completely unbilled.</div></div>
+        <div class="problem-card fade-in" style="transition-delay:0.2s;"><div class="problem-card-num">03</div><div class="problem-card-title">Chasing documents is your #1 bottleneck</div><div class="problem-card-desc">64% of firms say chasing clients for documents is their biggest workflow pain. Only 38% of email requests get completed by deadline.</div></div>
+        <div class="problem-card fade-in" style="transition-delay:0.3s;"><div class="problem-card-num">04</div><div class="problem-card-title">You're working 55+ hours but billing for 32</div><div class="problem-card-desc">Firms lose 15-25% of billable hours to poor time tracking. Staff work 2.3 hours but enter 2.0 to "look efficient." The leakage is invisible — and expensive.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats Bar -->
+  <section class="section-sm">
+    <div class="container">
+      <div class="stats-bar">
+        <div class="stat-item"><div class="stat-value">300K+</div><div class="stat-label">Accountants left the profession</div></div>
+        <div class="stat-item"><div class="stat-value">99%</div><div class="stat-label">Experience burnout</div></div>
+        <div class="stat-item"><div class="stat-value">50%</div><div class="stat-label">Productive capacity lost</div></div>
+        <div class="stat-item"><div class="stat-value">25-35%</div><div class="stat-label">Annual staff turnover</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Solution Section -->
+  <section id="solution" class="section">
+    <div class="container">
+      <div style="max-width:640px;margin:0 auto;text-align:center;margin-bottom:3rem;">
+        <div class="sep" style="margin:0 auto 1.5rem;"></div>
+        <h2 class="text-4xl font-extrabold tracking-tight" style="margin-bottom:1rem;">Three systems. One platform. Zero disruption.</h2>
+        <p class="text-lg text-secondary">KLARY doesn't replace your accounting software. It connects to Fortnox, Visma, or whatever you use — and adds the intelligence layer you're missing.</p>
+      </div>
+      <div class="grid grid-3 gap-6">
+        <div class="solution-card fade-in">
+          <div class="solution-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+          <h3>Auto-Time & AI Automation</h3>
+          <p>Background time tracking captures every minute automatically. AI reads your transactions and suggests account codes with 93% accuracy. Smart reminders chase documents so you don't have to.</p>
+          <div class="tag tag-green" style="margin-top:1rem;">Saves 15-25 hrs/week</div>
+        </div>
+        <div class="solution-card fade-in" style="transition-delay:0.1s;">
+          <div class="solution-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+          <h3>Advisory Revenue Engine</h3>
+          <p>AI detects when clients ask advisory-level questions. Flags the opportunity. Generates a proposal. Converts your "free advice" into recurring advisory revenue — without awkward sales conversations.</p>
+          <div class="tag tag-green" style="margin-top:1rem;">+90-185K SEK/yr per partner</div>
+        </div>
+        <div class="solution-card fade-in" style="transition-delay:0.2s;">
+          <div class="solution-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+          <h3>Frictionless Client Portal</h3>
+          <p>Send document requests via SMS — not email. Clients tap a link, upload from their phone, done. No app. No login. No friction. Collection rates jump from 38% to 74%.</p>
+          <div class="tag tag-green" style="margin-top:1rem;">2x faster collection</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section class="section" style="background:var(--bg-warm);">
+    <div class="container">
+      <div style="max-width:640px;margin:0 auto;text-align:center;margin-bottom:3rem;">
+        <div class="sep" style="margin:0 auto 1.5rem;"></div>
+        <h2 class="text-4xl font-extrabold tracking-tight" style="margin-bottom:1rem;">Set it up in 15 minutes. See results in 24 hours.</h2>
+      </div>
+      <div class="grid grid-3 gap-6" style="max-width:900px;margin:0 auto;">
+        <div style="text-align:center;padding:1.5rem;">
+          <div style="width:48px;height:48px;border-radius:50%;background:var(--accent);color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.125rem;margin:0 auto 1rem;">1</div>
+          <h3 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">Connect your software</h3>
+          <p class="text-sm text-secondary">One-click integration with Fortnox, Visma, e-conomic, Tripletex, or Björn Lundén. Your data stays in the EU.</p>
+        </div>
+        <div style="text-align:center;padding:1.5rem;">
+          <div style="width:48px;height:48px;border-radius:50%;background:var(--accent);color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.125rem;margin:0 auto 1rem;">2</div>
+          <h3 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">Let AI learn your patterns</h3>
+          <p class="text-sm text-secondary">KLARY studies your transaction history, your time entries, and your client conversations. It learns how you work.</p>
+        </div>
+        <div style="text-align:center;padding:1.5rem;">
+          <div style="width:48px;height:48px;border-radius:50%;background:var(--accent);color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.125rem;margin:0 auto 1rem;">3</div>
+          <h3 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">Reclaim your time</h3>
+          <p class="text-sm text-secondary">Review AI suggestions in minutes, not hours. Convert flagged advisory opportunities. Send SMS document requests in 30 seconds.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Testimonials -->
+  <section class="section">
+    <div class="container">
+      <div style="max-width:640px;margin:0 auto;text-align:center;margin-bottom:3rem;">
+        <div class="sep" style="margin:0 auto 1.5rem;"></div>
+        <h2 class="text-4xl font-extrabold tracking-tight" style="margin-bottom:1rem;">Trusted by accountants who've tried everything else.</h2>
+      </div>
+      <div class="grid grid-3 gap-6">
+        <div class="testimonial fade-in">
+          <div class="testimonial-quote">"We were drowning. Two staff had quit, and the rest of us were working 70-hour weeks. Within a month of KLARY, we reclaimed 18 hours per person per week. We used that time to launch an advisory service that now generates 40% of our revenue."</div>
+          <div class="testimonial-author"><div class="testimonial-avatar">AL</div><div><div class="testimonial-name">Anna Lindqvist</div><div class="testimonial-role">Partner, Lindqvist Redovisning AB · Stockholm</div></div></div>
+        </div>
+        <div class="testimonial fade-in" style="transition-delay:0.1s;">
+          <div class="testimonial-quote">"I didn't realize how much free advice I was giving until KLARY flagged it. Turns out I was spending 8 hours a week on 'quick questions' from just three clients. I converted all three to advisory packages. That's 25,000 kr in new monthly revenue."</div>
+          <div class="testimonial-author"><div class="testimonial-avatar">MN</div><div><div class="testimonial-name">Magnus Nilsson</div><div class="testimonial-role">Owner, MN Revision · Göteborg</div></div></div>
+        </div>
+        <div class="testimonial fade-in" style="transition-delay:0.2s;">
+          <div class="testimonial-quote">"The SMS document collection alone paid for KLARY. We went from 40% document completion to 74%. Our clients actually prefer it — they upload receipts from their phone while sitting on the bus. No more 'I forgot my login' excuses."</div>
+          <div class="testimonial-author"><div class="testimonial-avatar">SO</div><div><div class="testimonial-name">Sofia Olsen</div><div class="testimonial-role">Director, Olsen & Partners AS · Oslo</div></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section id="pricing" class="section" style="background:var(--bg-warm);">
+    <div class="container">
+      <div style="max-width:640px;margin:0 auto;text-align:center;margin-bottom:3rem;">
+        <div class="sep" style="margin:0 auto 1.5rem;"></div>
+        <h2 class="text-4xl font-extrabold tracking-tight" style="margin-bottom:1rem;">Pays for itself in the first 2 hours you reclaim.</h2>
+        <p class="text-lg text-secondary">Every plan includes a 14-day free trial. No credit card. No setup fee. Cancel anytime.</p>
+        <div class="pricing-toggle">
+          <button class="pricing-toggle-btn active" id="monthlyBtn" onclick="setBilling('monthly')">Monthly</button>
+          <button class="pricing-toggle-btn" id="yearlyBtn" onclick="setBilling('yearly')">Yearly</button>
+          <span class="pricing-toggle-save">Save 20%</span>
+        </div>
+      </div>
+
+      <div class="grid grid-3 gap-6" style="max-width:960px;margin:0 auto;">
+        <!-- KlarStart -->
+        <div class="pricing-card fade-in">
+          <div class="pricing-tier">KlarStart</div>
+          <div class="pricing-price" id="klarstart-price">795 kr<span style="font-size:1rem;font-weight:500;color:var(--text-muted);">/mo</span></div>
+          <div class="pricing-period">per user · Ideal for solo accountants</div>
+          <ul class="pricing-features">
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Background time tracking</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Smart timesheet generation</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>AI categorization (200/mo)</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Client portal (10 clients)</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>SMS requests (50/mo)</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Fortnox & Visma integration</li>
+          </ul>
+          <button class="pricing-btn pricing-btn-secondary" id="klarstart-btn" onclick="startCheckout('klarstart')">Start Free Trial</button>
+        </div>
+
+        <!-- KlarPro (Featured) -->
+        <div class="pricing-card featured fade-in" style="transition-delay:0.1s;">
+          <div class="pricing-tier">KlarPro</div>
+          <div class="pricing-price" id="klarpro-price">1,495 kr<span style="font-size:1rem;font-weight:500;color:var(--text-muted);">/mo</span></div>
+          <div class="pricing-period">per user · For growing firms (4-15 staff)</div>
+          <ul class="pricing-features">
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Everything in KlarStart</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Unlimited AI categorization</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Advisory Revenue Engine</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Auto-proposal generator</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Client portal (50 clients)</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>SMS requests (300/mo)</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>All Nordic integrations</li>
+          </ul>
+          <button class="pricing-btn pricing-btn-primary" id="klarpro-btn" onclick="startCheckout('klarpro')">Start Free Trial</button>
+        </div>
+
+        <!-- KlarFirm -->
+        <div class="pricing-card fade-in" style="transition-delay:0.2s;">
+          <div class="pricing-tier">KlarFirm</div>
+          <div class="pricing-price" id="klarfirm-price">3,995 kr<span style="font-size:1rem;font-weight:500;color:var(--text-muted);">/mo</span></div>
+          <div class="pricing-period">flat fee · For mid-size firms (15-50 staff)</div>
+          <ul class="pricing-features">
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Everything in KlarPro</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Unlimited users, clients & SMS</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Team analytics & reporting</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>API access</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Priority support</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Dedicated onboarding</li>
+          </ul>
+          <button class="pricing-btn pricing-btn-secondary" id="klarfirm-btn" onclick="startCheckout('klarfirm')">Contact Sales</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq" class="section">
+    <div class="container">
+      <div style="max-width:720px;margin:0 auto;">
+        <div style="text-align:center;margin-bottom:3rem;">
+          <div class="sep" style="margin:0 auto 1.5rem;"></div>
+          <h2 class="text-4xl font-extrabold tracking-tight">Questions accountants actually ask.</h2>
+        </div>
+        <div class="faq-item open">
+          <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">Does KLARY replace my accounting software?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-answer"><p>No. KLARY connects to Fortnox, Visma, e-conomic, Tripletex, Björn Lundén, and others via API. Your accounting software stays in charge. KLARY adds the intelligence layer on top.</p></div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">How long does setup take?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-answer"><p>Most firms are up and running in under 15 minutes. Connect your accounting software, invite your team, and KLARY starts learning your patterns immediately. You'll see AI suggestions within 24 hours.</p></div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">Where is my data stored?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-answer"><p>All data is stored in the EU (Frankfurt AWS region). We're fully GDPR compliant and can provide a Data Processing Agreement. We never share your data with third parties. Your client data is encrypted with AES-256 both at rest and in transit.</p></div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">What's the ROI?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-answer"><p>The average KlarPro user reclaims 18 hours per week. At a blended rate of 1,200 kr/hour, that's 864,000 kr in annual capacity value — against a cost of 17,940 kr/year. The advisory revenue engine alone typically generates 90,000-185,000 kr in new annual revenue per partner. Most firms see positive ROI in week one.</p></div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">Can I cancel anytime?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-answer"><p>Yes. No annual contracts, no exit fees, no "talk to our retention team." Cancel directly from your account settings. If you're on a paid plan, you'll keep access until the end of your billing period.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Final CTA -->
+  <section class="section" style="padding-bottom:2rem;">
+    <div class="container">
+      <div class="cta-section fade-in">
+        <h2>Stop working 55 hours and billing for 32.</h2>
+        <p>Join 200+ accounting firms across Scandinavia who've reclaimed their time — and their sanity — with KLARY.</p>
+        <a href="#pricing" class="cta-btn">Start Your 14-Day Free Trial<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a>
+        <p style="font-size:0.8125rem;opacity:0.7;margin-top:1.5rem;">No credit card required · Cancel anytime · Set up in 15 minutes</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="color:var(--accent);"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="currentColor"/></svg><span class="footer-brand">KLARY</span></div>
+          <p class="footer-desc">The intelligence layer for Scandinavian accounting firms. Reclaim time. Capture revenue. Serve clients better.</p>
+        </div>
+        <div class="footer-links"><h4>Product</h4><a href="#solution">Features</a><a href="#pricing">Pricing</a><a href="#">Integrations</a><a href="#">API</a></div>
+        <div class="footer-links"><h4>Company</h4><a href="#">About</a><a href="#">Blog</a><a href="#">Careers</a><a href="#">Contact</a></div>
+        <div class="footer-links"><h4>Legal</h4><a href="#">Privacy</a><a href="#">Terms</a><a href="#">GDPR</a><a href="#">Security</a></div>
+      </div>
+      <div class="footer-bottom">&copy; 2026 KLARY AB. All rights reserved. Made in Stockholm for accountants across Scandinavia.</div>
+    </div>
+  </footer>
+
+  <script>
+    // CONFIG - Replace these with your actual values
+    const CONFIG = {
+      API_URL: 'https://library-story-production.up.railway.app',
+      STRIPE_PUBLIC_KEY: 'pk_test_YOUR_STRIPE_PUBLIC_KEY', // ← replace with your Stripe publishable key
+      APP_REGISTER_URL: 'https://library-story-production.up.railway.app/register'
+    };
+
+    // Pricing data
+    const PRICING = {
+      monthly: {
+        klarstart: { price: '795 kr', period: '/mo', stripePriceId: 'price_klarstart_monthly' },
+        klarpro: { price: '1,495 kr', period: '/mo', stripePriceId: 'price_klarpro_monthly' },
+        klarfirm: { price: '3,995 kr', period: '/mo', stripePriceId: 'price_klarfirm_monthly' }
+      },
+      yearly: {
+        klarstart: { price: '636 kr', period: '/mo', stripePriceId: 'price_klarstart_yearly' },
+        klarpro: { price: '1,196 kr', period: '/mo', stripePriceId: 'price_klarpro_yearly' },
+        klarfirm: { price: '3,196 kr', period: '/mo', stripePriceId: 'price_klarfirm_yearly' }
+      }
+    };
+
+    let currentBilling = 'monthly';
+
+    function setBilling(billing) {
+      currentBilling = billing;
+      document.getElementById('monthlyBtn').classList.toggle('active', billing === 'monthly');
+      document.getElementById('yearlyBtn').classList.toggle('active', billing === 'yearly');
+
+      ['klarstart', 'klarpro', 'klarfirm'].forEach(plan => {
+        const data = PRICING[billing][plan];
+        document.getElementById(plan + '-price').innerHTML = data.price + '<span style="font-size:1rem;font-weight:500;color:var(--text-muted);">' + data.period + '</span>';
+      });
+    }
+
+    async function startCheckout(plan) {
+      if (plan === 'klarfirm') {
+        // Contact sales for enterprise
+        window.location.href = 'mailto:sales@klary.ai?subject=KlarFirm Enterprise Inquiry';
+        return;
+      }
+
+      const btn = document.getElementById(plan + '-btn');
+      btn.disabled = true;
+      btn.classList.add('pricing-btn-loading');
+
+      try {
+        const response = await fetch(CONFIG.API_URL + '/api/stripe/create-checkout-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            plan: plan,
+            billing: currentBilling,
+            priceId: PRICING[currentBilling][plan].stripePriceId
+          })
+        });
+
+        const { sessionId } = await response.json();
+        const stripe = Stripe(CONFIG.STRIPE_PUBLIC_KEY);
+        await stripe.redirectToCheckout({ sessionId });
+      } catch (error) {
+        console.error('Checkout error:', error);
+        alert('Something went wrong. Please try again or contact support.');
+        btn.disabled = false;
+        btn.classList.remove('pricing-btn-loading');
+      }
+    }
+
+    // Fade in on scroll
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+    // Smooth scroll
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function(e) {
+        const href = this.getAttribute('href');
+        if (href !== '#') { e.preventDefault(); document.querySelector(href)?.scrollIntoView({ behavior: 'smooth' }); }
+      });
+    });
+  </script>
 </body>
 </html>

@@ -21,6 +21,7 @@ import { documentRequestRouter } from './routes/documentRequests';
 import { uploadRouter } from './routes/uploads';
 import { integrationRouter } from './routes/integrations';
 import { dashboardRouter } from './routes/dashboard';
+import { stripeRouter } from './routes/stripe';
 import { errorHandler } from './middleware/errorHandler';
 import { requestValidator } from './middleware/requestValidator';
 import { logger } from './utils/logger';
@@ -102,6 +103,9 @@ app.use(morgan('combined', {
   },
 }));
 
+// Raw body for Stripe webhook — must be registered BEFORE express.json()
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
+
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -123,6 +127,7 @@ app.use('/api/v1/document-requests', documentRequestRouter);
 app.use('/api/v1/uploads', uploadRouter);
 app.use('/api/v1/integrations', integrationRouter);
 app.use('/api/v1/dashboard', dashboardRouter);
+app.use('/api/stripe', stripeRouter);
 
 // Client portal (public, no auth required for upload)
 app.use('/portal', express.static(path.join(__dirname, '../public/portal')));

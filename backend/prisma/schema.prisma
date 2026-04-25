@@ -76,7 +76,12 @@ model Organization {
   language    String   @default("sv")
   
   // Billing
-  stripeCustomerId String? @map("stripe_customer_id")
+  stripeCustomerId     String?  @unique @map("stripe_customer_id")
+  stripeSubscriptionId String?  @unique @map("stripe_subscription_id")
+  subscriptionStatus   String   @default("TRIAL") @map("subscription_status")
+  billing              String   @default("monthly")
+  trialEndsAt          DateTime? @map("trial_ends_at")
+  email                String?  @unique
   
   // Audit
   createdAt   DateTime @default(now()) @map("created_at")
@@ -392,7 +397,7 @@ enum ActivityType {
   PORTAL_MESSAGE
   CALL
   MEETING
-n  DOCUMENT_UPLOADED
+  DOCUMENT_UPLOADED
   QUESTION_ASKED
 }
 
