@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../utils/prisma';
 import { authenticate, optionalAuth, AuthRequest } from '../middleware/auth';
@@ -10,7 +11,8 @@ import { buildCfg } from './emailSettings';
 
 const router = Router();
 
-const uploadDir = process.env.UPLOAD_PATH || './uploads';
+const uploadDir = process.env.UPLOAD_PATH || '/tmp/uploads';
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadDir),
