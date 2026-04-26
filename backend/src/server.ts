@@ -21,6 +21,7 @@ import { documentRequestRouter } from './routes/documentRequests';
 import { uploadRouter } from './routes/uploads';
 import { integrationRouter } from './routes/integrations';
 import { dashboardRouter } from './routes/dashboard';
+import { webhookRouter } from './routes/webhooks';
 import { errorHandler } from './middleware/errorHandler';
 import { requestValidator } from './middleware/requestValidator';
 import { logger } from './utils/logger';
@@ -101,6 +102,9 @@ app.use(morgan('combined', {
     write: (message: string) => logger.info(message.trim()),
   },
 }));
+
+// Stripe webhook — raw body required for signature verification, must be before express.json()
+app.use('/api/v1/webhooks', express.raw({ type: 'application/json' }), webhookRouter);
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));

@@ -32,7 +32,9 @@
     "twilio": "^5.0.0",
     "uuid": "^9.0.1",
     "winston": "^3.12.0",
-    "zod": "^3.22.4"
+    "zod": "^3.22.4",
+    "stripe": "^14.21.0",
+    "nodemailer": "^6.9.13"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -44,6 +46,7 @@
     "@types/node": "^20.11.25",
     "@types/node-cron": "^3.0.11",
     "@types/uuid": "^9.0.8",
+    "@types/nodemailer": "^6.4.14",
     "@typescript-eslint/eslint-plugin": "^7.2.0",
     "@typescript-eslint/parser": "^7.2.0",
     "eslint": "^8.57.0",
