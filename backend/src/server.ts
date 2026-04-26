@@ -185,7 +185,7 @@ app.use(errorHandler);
 app.listen(PORT, () => {
   logger.info(`🚀 KLARY Server running on port ${PORT}`);
   logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-  logger.info(`🔒 CORS origin: ${corsOrigin}`);
+  logger.info(`🔒 CORS origins: ${allowedOrigins.join(', ')}`);
 });
 
 export { app };
