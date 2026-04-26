@@ -74,7 +74,17 @@ model Organization {
   timezone    String   @default("Europe/Stockholm")
   currency    String   @default("SEK")
   language    String   @default("sv")
-  
+
+  // Email (SMTP) settings
+  smtpHost     String?  @map("smtp_host")
+  smtpPort     Int?     @map("smtp_port")
+  smtpUser     String?  @map("smtp_user")
+  smtpPass     String?  @map("smtp_pass")
+  smtpFrom     String?  @map("smtp_from")
+  smtpFromName String?  @map("smtp_from_name")
+  smtpSecure   Boolean  @default(true) @map("smtp_secure")
+  emailNotifyOnUpload Boolean @default(true) @map("email_notify_on_upload")
+
   // Billing
   stripeCustomerId String? @map("stripe_customer_id")
   

@@ -69,6 +69,11 @@ export function DocumentRequestsPage() {
             <input className="input" placeholder="Title *" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} required />
             <input className="input" placeholder="Description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
             <input type="date" className="input" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} />
+            <select className="input" value={form.channel} onChange={e => setForm(f => ({ ...f, channel: e.target.value }))}>
+              <option value="email">Email (sends to client's email)</option>
+              <option value="portal">Portal (copy link manually)</option>
+              <option value="sms">SMS (coming soon)</option>
+            </select>
             <div className="sm:col-span-2 flex gap-3">
               <button type="submit" className="btn-primary" disabled={createMutation.isLoading}><Send className="w-4 h-4 mr-2" />Send Request</button>
               <button type="button" className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>

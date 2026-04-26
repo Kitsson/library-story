@@ -22,6 +22,7 @@ import { uploadRouter } from './routes/uploads';
 import { integrationRouter } from './routes/integrations';
 import { dashboardRouter } from './routes/dashboard';
 import { webhookRouter } from './routes/webhooks';
+import { emailSettingsRouter } from './routes/emailSettings';
 import { errorHandler } from './middleware/errorHandler';
 import { requestValidator } from './middleware/requestValidator';
 import { logger } from './utils/logger';
@@ -127,6 +128,7 @@ app.use('/api/v1/document-requests', documentRequestRouter);
 app.use('/api/v1/uploads', uploadRouter);
 app.use('/api/v1/integrations', integrationRouter);
 app.use('/api/v1/dashboard', dashboardRouter);
+app.use('/api/v1/email-settings', emailSettingsRouter);
 
 // Client portal (public, no auth required for upload)
 app.use('/portal', express.static(path.join(__dirname, '../public/portal')));

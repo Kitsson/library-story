@@ -1,8 +1,55 @@
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { useAuth } from '@/hooks/useAuth';
-import { Building2, Shield, Users, CreditCard } from 'lucide-react';
+import { emailSettingsApi } from '@/services/api';
+import { Building2, Shield, Users, CreditCard, Mail, CheckCircle, AlertCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
+
+const SMTP_PRESETS: Record<string, { host: string; port: number; secure: boolean; label: string }> = {
+  gmail:   { host: 'smtp.gmail.com',      port: 587, secure: false, label: 'Gmail (App Password required)' },
+  outlook: { host: 'smtp.office365.com',  port: 587, secure: false, label: 'Outlook / Microsoft 365' },
+  zoho:    { host: 'smtp.zoho.eu',        port: 587, secure: false, label: 'Zoho Mail' },
+  custom:  { host: '',                    port: 587, secure: true,  label: 'Custom SMTP' },
+};
 
 export function SettingsPage() {
   const { user, organization } = useAuth();
+  const queryClient = useQueryClient();
+  const [preset, setPreset] = useState('custom');
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  const { data: emailData } = useQuery('email-settings', () => emailSettingsApi.get().then(r => r.data));
+
+  const [form, setForm] = useState({
+    smtpHost: '', smtpPort: 587, smtpUser: '', smtpPass: '',
+    smtpFrom: '', smtpFromName: '', smtpSecure: true, emailNotifyOnUpload: true,
+  });
+
+  const [formLoaded, setFormLoaded] = useState(false);
+  if (emailData && !formLoaded) {
+    setForm({ ...emailData.settings, smtpPass: '' });
+    setFormLoaded(true);
+  }
+
+  const saveMutation = useMutation(emailSettingsApi.save, {
+    onSuccess: () => {
+      queryClient.invalidateQueries('email-settings');
+      setFormLoaded(false);
+      toast.success('Email settings saved!');
+    },
+    onError: (e: any) => toast.error(e.response?.data?.error || 'Save failed'),
+  });
+
+  const testMutation = useMutation(emailSettingsApi.test, {
+    onSuccess: (r) => setTestResult({ ok: true, message: r.data.message }),
+    onError: (e: any) => setTestResult({ ok: false, message: e.response?.data?.error || 'Connection failed' }),
+  });
+
+  function applyPreset(key: string) {
+    setPreset(key);
+    const p = SMTP_PRESETS[key];
+    if (p.host) setForm(f => ({ ...f, smtpHost: p.host, smtpPort: p.port, smtpSecure: p.secure }));
+  }
 
   const tierInfo: Record<string, { name: string; price: string; features: string[] }> = {
     KLARSTART: { name: 'KlarStart', price: '795 kr/mo', features: ['Auto-Time Tracking', 'Smart Timesheets', 'AI Categorization (200/mo)', 'Client Portal (10 clients)', 'SMS (50/mo)'] },
@@ -25,6 +72,107 @@ export function SettingsPage() {
             <div><label className="label">Organization Number</label><p className="text-gray-900">{user?.organizationId?.slice(0, 8) || '—'}</p></div>
             <div><label className="label">Current Plan</label><p className="text-klary-700 font-semibold">{current.name} <span className="text-gray-400 font-normal">({current.price})</span></p></div>
             <div><label className="label">Your Role</label><p className="text-gray-900 capitalize">{user?.role?.toLowerCase()}</p></div>
+          </div>
+        </div>
+      </div>
+
+      {/* Email Settings */}
+      <div className="card">
+        <div className="card-header">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Mail className="w-5 h-5 text-klary-600" />
+              <h3 className="font-semibold text-gray-900">Email Settings</h3>
+            </div>
+            {emailData?.configured && (
+              <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
+                <CheckCircle className="w-3.5 h-3.5" /> Configured
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-gray-500 mt-1">Connect your firm's email to send document requests and receive upload notifications.</p>
+        </div>
+        <div className="card-body space-y-5">
+          {/* Provider presets */}
+          <div>
+            <label className="label">Email Provider</label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1">
+              {Object.entries(SMTP_PRESETS).map(([key, p]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => applyPreset(key)}
+                  className={`px-3 py-2 text-xs rounded-lg border font-medium transition-colors ${preset === key ? 'border-klary-500 bg-klary-50 text-klary-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
+                >
+                  {key === 'gmail' ? 'Gmail' : key === 'outlook' ? 'Outlook' : key === 'zoho' ? 'Zoho' : 'Custom'}
+                </button>
+              ))}
+            </div>
+            {preset === 'gmail' && (
+              <p className="text-xs text-amber-600 mt-2">Gmail requires an App Password. Enable 2FA → <a className="underline" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">create one here</a>.</p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="label">SMTP Host</label>
+              <input className="input" placeholder="smtp.gmail.com" value={form.smtpHost} onChange={e => setForm(f => ({ ...f, smtpHost: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">Port</label>
+              <input type="number" className="input" placeholder="587" value={form.smtpPort} onChange={e => setForm(f => ({ ...f, smtpPort: parseInt(e.target.value) || 587 }))} />
+            </div>
+            <div>
+              <label className="label">Username / Email</label>
+              <input className="input" placeholder="you@yourfirm.com" value={form.smtpUser} onChange={e => setForm(f => ({ ...f, smtpUser: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">Password / App Password</label>
+              <input type="password" className="input" placeholder={emailData?.configured ? '(saved — enter to update)' : 'Enter password'} value={form.smtpPass} onChange={e => setForm(f => ({ ...f, smtpPass: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">From Email</label>
+              <input className="input" placeholder="info@yourfirm.com" value={form.smtpFrom} onChange={e => setForm(f => ({ ...f, smtpFrom: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">From Name</label>
+              <input className="input" placeholder="Lindqvist Redovisning" value={form.smtpFromName} onChange={e => setForm(f => ({ ...f, smtpFromName: e.target.value }))} />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-6">
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <input type="checkbox" checked={form.smtpSecure} onChange={e => setForm(f => ({ ...f, smtpSecure: e.target.checked }))} />
+              Use SSL/TLS
+            </label>
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <input type="checkbox" checked={form.emailNotifyOnUpload} onChange={e => setForm(f => ({ ...f, emailNotifyOnUpload: e.target.checked }))} />
+              Notify me when clients upload documents
+            </label>
+          </div>
+
+          {testResult && (
+            <div className={`flex items-start gap-2 p-3 rounded-lg text-sm ${testResult.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+              {testResult.ok ? <CheckCircle className="w-4 h-4 mt-0.5 shrink-0" /> : <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />}
+              {testResult.message}
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => saveMutation.mutate(form)}
+              disabled={saveMutation.isLoading}
+              className="btn-primary"
+            >
+              {saveMutation.isLoading ? 'Saving…' : 'Save Settings'}
+            </button>
+            <button
+              onClick={() => { setTestResult(null); testMutation.mutate(undefined); }}
+              disabled={testMutation.isLoading || !emailData?.configured}
+              className="btn-secondary"
+            >
+              {testMutation.isLoading ? 'Testing…' : 'Test Connection'}
+            </button>
           </div>
         </div>
       </div>

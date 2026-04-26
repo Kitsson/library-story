@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../utils/prisma';
 import { authenticate, optionalAuth, AuthRequest } from '../middleware/auth';
 import { logger } from '../utils/logger';
+import { sendUploadNotificationEmail } from '../services/email';
 
 const router = Router();
 
@@ -91,12 +92,8 @@ router.post('/portal/:token', upload.single('file'), async (req, res, next) => {
     // Update document request items
     try {
       const items = JSON.parse(docRequest.items as string);
-      // Mark first unuploaded item as uploaded
       for (const item of items) {
-        if (!item.uploaded) {
-          item.uploaded = true;
-          break;
-        }
+        if (!item.uploaded) { item.uploaded = true; break; }
       }
       const allUploaded = items.every((i: any) => i.uploaded || !i.required);
       await prisma.documentRequest.update({
@@ -110,7 +107,41 @@ router.post('/portal/:token', upload.single('file'), async (req, res, next) => {
       });
     } catch {}
 
-    logger.info(`Portal upload: ${req.file.originalname} for request ${docRequest.id}`);
+    // Notify accountant by email if configured
+    try {
+      const requester = await prisma.user.findUnique({
+        where: { id: docRequest.requestedBy },
+        select: { email: true, firstName: true, lastName: true, organizationId: true },
+      });
+
+      if (requester?.organizationId) {
+        const org = await prisma.organization.findUnique({
+          where: { id: requester.organizationId },
+          select: { smtpHost: true, smtpPort: true, smtpUser: true, smtpPass: true, smtpFrom: true, smtpFromName: true, smtpSecure: true, emailNotifyOnUpload: true, name: true },
+        });
+
+        if (org?.smtpHost && org.emailNotifyOnUpload) {
+          const appUrl = process.env.APP_URL || 'https://klaryproject.vercel.app';
+          await sendUploadNotificationEmail(
+            { host: org.smtpHost, port: org.smtpPort!, secure: org.smtpSecure, user: org.smtpUser!, pass: org.smtpPass!, from: org.smtpFrom!, fromName: org.smtpFromName! },
+            {
+              accountantEmail: requester.email,
+              accountantName: `${requester.firstName} ${requester.lastName}`,
+              firmName: org.name,
+              clientName: docRequest.client.name,
+              requestTitle: docRequest.title,
+              fileName: req.file!.originalname,
+              uploadedAt: new Date().toLocaleString('sv-SE'),
+              requestUrl: `${appUrl}/document-requests`,
+            }
+          );
+        }
+      }
+    } catch (notifyErr: any) {
+      logger.warn(`Upload notification failed: ${notifyErr.message}`);
+    }
+
+    logger.info(`Portal upload: ${req.file!.originalname} for request ${docRequest.id}`);
     res.status(201).json({ message: 'File uploaded successfully!', upload: uploadRecord });
   } catch (e) { next(e); }
 });

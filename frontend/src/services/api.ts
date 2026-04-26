@@ -88,3 +88,10 @@ export const integrationApi = {
   connect: (data: any) => api.post('/integrations', data),
   providers: () => api.get('/integrations/providers/list'),
 };
+
+// Email Settings
+export const emailSettingsApi = {
+  get: () => api.get('/email-settings'),
+  save: (data: any) => api.patch('/email-settings', data),
+  test: () => api.post('/email-settings/test'),
+};

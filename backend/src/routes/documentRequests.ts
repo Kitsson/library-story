@@ -4,6 +4,7 @@ import { prisma } from '../utils/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { generateToken } from '../utils/crypto';
 import { logger } from '../utils/logger';
+import { sendDocumentRequestEmail } from '../services/email';
 
 const router = Router();
 router.use(authenticate);
@@ -81,16 +82,54 @@ router.post('/', async (req: AuthRequest, res, next) => {
       include: { client: { select: { id: true, name: true, phone: true, email: true } } },
     });
 
-    // Auto-send if SMS channel
+    // Auto-send if SMS channel (Twilio placeholder)
     if (data.channel === 'sms') {
-      // Here you would integrate with Twilio
-      // For now, mark as sent
       await prisma.documentRequest.update({
         where: { id: request.id },
         data: { status: 'SENT', sentAt: new Date() },
       });
+      logger.info(`Document request marked sent via SMS to ${client.name}`);
+    }
 
-      logger.info(`Document request sent via SMS to ${client.name}`);
+    // Send email if email channel
+    if (data.channel === 'email') {
+      const org = await prisma.organization.findUnique({
+        where: { id: orgId },
+        select: { smtpHost: true, smtpPort: true, smtpUser: true, smtpPass: true, smtpFrom: true, smtpFromName: true, smtpSecure: true, name: true },
+      });
+
+      if (org?.smtpHost && client.email) {
+        try {
+          const appUrl = process.env.APP_URL || 'https://klaryproject.vercel.app';
+          const uploadUrl = `${appUrl}/portal/upload/${uploadToken}`;
+          const items = data.items.map(i => ({ name: i.name, required: i.required }));
+
+          await sendDocumentRequestEmail(
+            { host: org.smtpHost, port: org.smtpPort!, secure: org.smtpSecure, user: org.smtpUser!, pass: org.smtpPass!, from: org.smtpFrom!, fromName: org.smtpFromName! },
+            {
+              clientName: client.name,
+              clientEmail: client.email,
+              firmName: org.name,
+              requestTitle: data.title,
+              requestDescription: data.description,
+              items,
+              uploadUrl,
+              dueDate: data.dueDate ? new Date(data.dueDate).toLocaleDateString('sv-SE') : undefined,
+            }
+          );
+
+          await prisma.documentRequest.update({
+            where: { id: request.id },
+            data: { status: 'SENT', sentAt: new Date() },
+          });
+        } catch (emailErr: any) {
+          logger.error(`Failed to send document request email: ${emailErr.message}`);
+        }
+      } else if (!client.email) {
+        logger.warn(`Cannot send email for document request ${request.id}: client has no email address`);
+      } else {
+        logger.warn(`Cannot send email for document request ${request.id}: SMTP not configured`);
+      }
     }
 
     res.status(201).json({
