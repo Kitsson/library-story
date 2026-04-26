@@ -1,22 +1,26 @@
 import { useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { useQuery } from 'react-query';
+import { useQuery, useQueryClient } from 'react-query';
 import { api } from '@/services/api';
 import { Upload, CheckCircle, FileText, AlertCircle, Loader } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export function PortalUploadPage() {
   const { token } = useParams<{ token: string }>();
+  const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
-  const [allDone, setAllDone] = useState(false);
+  const [sessionUploads, setSessionUploads] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { data, isLoading, error } = useQuery(
     ['portal', token],
     () => api.get(`/uploads/portal/${token}`).then(r => r.data),
-    { retry: false }
+    { retry: false, refetchOnWindowFocus: false }
   );
+
+  const items: Array<{ name: string; required: boolean; uploaded: boolean }> = data?.items || [];
+  const allRequiredDone = items.length > 0 && items.every(i => i.uploaded || !i.required);
+  const pendingItems = items.filter(i => !i.uploaded);
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -30,15 +34,16 @@ export function PortalUploadPage() {
         await api.post(`/uploads/portal/${token}`, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
-        setUploadedFiles(prev => [...prev, file.name]);
+        setSessionUploads(prev => [...prev, file.name]);
         toast.success(`${file.name} uploaded`);
+        // Refresh items to reflect updated upload status
+        queryClient.invalidateQueries(['portal', token]);
       } catch (e: any) {
-        toast.error(`Failed to upload ${file.name}`);
+        toast.error(e.response?.data?.error || `Failed to upload ${file.name}`);
       }
     }
 
     setUploading(false);
-    setAllDone(true);
   }
 
   if (isLoading) {
@@ -62,8 +67,6 @@ export function PortalUploadPage() {
     );
   }
 
-  const items: Array<{ name: string; required: boolean; uploaded: boolean }> = data.items || [];
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -86,41 +89,52 @@ export function PortalUploadPage() {
           </p>
         </div>
 
-        {/* Document list */}
+        {/* Document checklist */}
         {items.length > 0 && (
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="px-5 py-3 border-b border-gray-100">
+            <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
               <h2 className="font-semibold text-gray-900 text-sm">Documents needed</h2>
+              <span className="text-xs text-gray-400">
+                {items.filter(i => i.uploaded).length} / {items.length} uploaded
+              </span>
             </div>
             <ul className="divide-y divide-gray-50">
               {items.map((item, i) => (
                 <li key={i} className="flex items-center gap-3 px-5 py-3">
-                  {item.uploaded || uploadedFiles.length > 0 ? (
+                  {item.uploaded ? (
                     <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />
                   ) : (
                     <FileText className="w-5 h-5 text-gray-300 shrink-0" />
                   )}
-                  <span className="text-sm text-gray-700 flex-1">{item.name}</span>
-                  {item.required && <span className="text-xs text-red-500">Required</span>}
+                  <span className={`text-sm flex-1 ${item.uploaded ? 'text-gray-400 line-through' : 'text-gray-700'}`}>
+                    {item.name}
+                  </span>
+                  {item.uploaded
+                    ? <span className="text-xs text-emerald-500 font-medium">Done</span>
+                    : item.required && <span className="text-xs text-red-500">Required</span>
+                  }
                 </li>
               ))}
             </ul>
           </div>
         )}
 
-        {/* Upload area */}
-        {allDone ? (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-8 text-center">
-            <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
-            <h2 className="text-lg font-semibold text-emerald-800 mb-1">Documents uploaded!</h2>
+        {/* All done banner */}
+        {allRequiredDone && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-6 text-center">
+            <CheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-2" />
+            <h2 className="text-lg font-semibold text-emerald-800 mb-1">All done!</h2>
             <p className="text-emerald-600 text-sm">
-              {uploadedFiles.length} file{uploadedFiles.length !== 1 ? 's' : ''} sent to {data.firmName}. You're all set.
+              All required documents have been received by {data.firmName}.
             </p>
           </div>
-        ) : (
+        )}
+
+        {/* Upload area — shown even when some done, hidden only when ALL required done */}
+        {!allRequiredDone && (
           <div
             className="bg-white rounded-xl shadow-sm border-2 border-dashed border-gray-200 p-8 text-center cursor-pointer hover:border-klary-400 hover:bg-klary-50 transition-colors"
-            onClick={() => inputRef.current?.click()}
+            onClick={() => !uploading && inputRef.current?.click()}
             onDragOver={e => e.preventDefault()}
             onDrop={e => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
           >
@@ -130,9 +144,16 @@ export function PortalUploadPage() {
               <Upload className="w-10 h-10 text-gray-300 mx-auto mb-3" />
             )}
             <p className="text-gray-700 font-medium mb-1">
-              {uploading ? 'Uploading…' : 'Tap to upload or drag files here'}
+              {uploading ? 'Uploading…' : pendingItems.length > 0
+                ? `Upload ${pendingItems[0].name}`
+                : 'Upload documents'}
             </p>
             <p className="text-xs text-gray-400">PDF, images, Word, Excel — max 10MB each</p>
+            {pendingItems.length > 1 && (
+              <p className="text-xs text-klary-500 mt-2">
+                {pendingItems.length} documents still needed — upload one at a time or select multiple
+              </p>
+            )}
             <input
               ref={inputRef}
               type="file"
@@ -144,12 +165,13 @@ export function PortalUploadPage() {
           </div>
         )}
 
-        {/* Uploaded list */}
-        {uploadedFiles.length > 0 && !allDone && (
+        {/* This session's uploads */}
+        {sessionUploads.length > 0 && (
           <div className="bg-white rounded-xl shadow-sm p-4 space-y-2">
-            {uploadedFiles.map((name, i) => (
+            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Uploaded this session</p>
+            {sessionUploads.map((name, i) => (
               <div key={i} className="flex items-center gap-2 text-sm text-emerald-700">
-                <CheckCircle className="w-4 h-4" /> {name}
+                <CheckCircle className="w-4 h-4 shrink-0" /> {name}
               </div>
             ))}
           </div>

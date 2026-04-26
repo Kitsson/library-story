@@ -146,7 +146,7 @@ app.get('/health', (req, res) => {
 app.get('/api/v1', (req, res) => {
   res.json({
     name: 'KLARY API',
-    version: '1.0.0',
+    version: '1.1.0-supabase',
     documentation: '/api/v1/docs',
     endpoints: [
       '/api/v1/auth',
