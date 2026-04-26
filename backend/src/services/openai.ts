@@ -1,8 +1,7 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 import { logger } from '../utils/logger';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || '' });
 
 interface TransactionInput {
   description: string;
@@ -23,7 +22,12 @@ interface CategorizationResult {
 export class OpenAIService {
   async categorizeTransaction(input: TransactionInput): Promise<CategorizationResult> {
     try {
-      const prompt = `You are an expert Swedish accountant AI. Categorize transactions using the Swedish BAS chart of accounts (BAS 2024).
+      const completion = await groq.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          {
+            role: 'system',
+            content: `You are an expert Swedish accountant AI. Categorize transactions using the Swedish BAS chart of accounts (BAS 2024).
 Common accounts:
 - 1510: Accounts Receivable (Kundfordringar)
 - 1930: Business Account (Företagskonto)
@@ -35,22 +39,23 @@ Common accounts:
 - 4000-6999: Costs/Expenses
 - 7210: Rent (Lokalhyra)
 - 7690: Other admin costs
-
 VAT codes: 05=25%, 06=12%, 07=6%, 08=0%
-
-Categorize this transaction and respond ONLY in JSON with keys: account, accountName, vatCode, costCenter, confidence (0-1), reasoning
-
-Transaction:
+Respond ONLY in JSON with keys: account, accountName, vatCode, costCenter, confidence (0-1), reasoning`,
+          },
+          {
+            role: 'user',
+            content: `Categorize this transaction:
 Description: "${input.description}"
 Amount: ${input.amount} SEK
 Date: ${input.date.toISOString().split('T')[0]}
-Client Industry: ${input.clientIndustry}`;
+Client Industry: ${input.clientIndustry}`,
+          },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.1,
+      });
 
-      const result = await model.generateContent(prompt);
-      const text = result.response.text();
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : '{}');
-
+      const parsed = JSON.parse(completion.choices[0].message.content || '{}');
       return {
         account: parsed.account || '6991',
         accountName: parsed.accountName || 'Övriga externa kostnader',
@@ -60,7 +65,7 @@ Client Industry: ${input.clientIndustry}`;
         reasoning: parsed.reasoning || 'No reasoning provided',
       };
     } catch (error) {
-      logger.error('Gemini categorization error:', error);
+      logger.error('Groq categorization error:', error);
       return {
         account: '6991',
         accountName: 'Övriga externa kostnader',
@@ -78,18 +83,27 @@ Client Industry: ${input.clientIndustry}`;
     type: string;
   }> {
     try {
-      const prompt = `Analyze if this client communication contains advisory content that should be billed separately from routine accounting work.
+      const completion = await groq.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          {
+            role: 'system',
+            content: `Analyze if a client communication contains advisory content that should be billed separately from routine accounting work.
 Advisory topics include: cash flow, growth strategy, hiring, pricing, tax planning, investments, loans, business structure changes.
-Respond ONLY in JSON: { "isAdvisory": boolean, "confidence": 0-1, "topics": ["topic1"], "type": "CASH_FLOW|TAX_PLANNING|VIRTUAL_CFO|GROWTH|COST_REDUCTION|COMPLIANCE|CUSTOM" }
+Respond ONLY in JSON: { "isAdvisory": boolean, "confidence": 0-1, "topics": ["topic1"], "type": "CASH_FLOW|TAX_PLANNING|VIRTUAL_CFO|GROWTH|COST_REDUCTION|COMPLIANCE|CUSTOM" }`,
+          },
+          {
+            role: 'user',
+            content,
+          },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.1,
+      });
 
-Communication: ${content}`;
-
-      const result = await model.generateContent(prompt);
-      const text = result.response.text();
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      return JSON.parse(jsonMatch ? jsonMatch[0] : '{"isAdvisory":false,"confidence":0,"topics":[],"type":"CUSTOM"}');
+      return JSON.parse(completion.choices[0].message.content || '{"isAdvisory":false,"confidence":0,"topics":[],"type":"CUSTOM"}');
     } catch (error) {
-      logger.error('Gemini advisory detection error:', error);
+      logger.error('Groq advisory detection error:', error);
       return { isAdvisory: false, confidence: 0, topics: [], type: 'CUSTOM' };
     }
   }
