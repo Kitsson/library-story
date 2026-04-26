@@ -6,9 +6,23 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import Stripe from 'stripe';
 import { z } from 'zod';
 import { prisma } from '../utils/prisma';
 import { logger } from '../utils/logger';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+  apiVersion: '2023-10-16' as any,
+});
+
+const PRICE_TIER_MAP: Record<string, {
+  tier: 'KLARSTART' | 'KLARPRO' | 'KLARFIRM';
+  maxUsers: number; maxClients: number; smsQuota: number; aiQuota: number;
+}> = {
+  'price_1TQDynGd49W60xYGre2aRiOO': { tier: 'KLARSTART', maxUsers: 3,  maxClients: 10,    smsQuota: 50,    aiQuota: 200   },
+  'price_1TQE4DGd49W60xYGR36TO7D3': { tier: 'KLARPRO',   maxUsers: 15, maxClients: 50,    smsQuota: 300,   aiQuota: 99999 },
+  'price_1TQE6kGd49W60xYGnEICl8aA': { tier: 'KLARFIRM',  maxUsers: 50, maxClients: 99999, smsQuota: 99999, aiQuota: 99999 },
+};
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
@@ -85,6 +99,32 @@ router.post('/register', async (req, res, next) => {
 
       return { organization, user };
     });
+
+    // Check Stripe for a paid subscription and upgrade tier if found
+    try {
+      const customers = await stripe.customers.list({ email: data.email, limit: 1 });
+      if (customers.data.length > 0) {
+        const subs = await stripe.subscriptions.list({
+          customer: customers.data[0].id,
+          status: 'trialing',
+          limit: 1,
+        });
+        if (subs.data.length > 0) {
+          const priceId = subs.data[0].items.data[0].price.id;
+          const config = PRICE_TIER_MAP[priceId];
+          if (config) {
+            await prisma.organization.update({
+              where: { id: result.organization.id },
+              data: { ...config, stripeCustomerId: customers.data[0].id },
+            });
+            result.organization.tier = config.tier as any;
+            logger.info(`Registration: applied ${config.tier} tier for ${data.email}`);
+          }
+        }
+      }
+    } catch (stripeErr: any) {
+      logger.warn(`Registration: Stripe tier check failed for ${data.email}: ${stripeErr.message}`);
+    }
 
     const { accessToken, refreshToken } = generateTokens(result.user.id);
 
