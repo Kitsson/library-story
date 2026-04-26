@@ -61,6 +61,36 @@ router.post('/', authenticate, upload.single('file'), async (req: AuthRequest, r
   } catch (e) { next(e); }
 });
 
+// GET /api/v1/uploads/portal/:token - Public: get request details by token
+router.get('/portal/:token', async (req, res, next) => {
+  try {
+    const docRequest = await prisma.documentRequest.findUnique({
+      where: { uploadToken: req.params.token },
+      include: { client: { select: { name: true } }, requester: { select: { firstName: true, lastName: true, organizationId: true } } },
+    });
+
+    if (!docRequest) return res.status(404).json({ error: 'Invalid upload link.' });
+    if (docRequest.tokenExpiry && docRequest.tokenExpiry < new Date()) {
+      return res.status(410).json({ error: 'This upload link has expired. Please contact your accountant for a new one.' });
+    }
+
+    const org = await prisma.organization.findUnique({
+      where: { id: docRequest.requester.organizationId! },
+      select: { name: true },
+    });
+
+    res.json({
+      title: docRequest.title,
+      description: docRequest.description,
+      firmName: org?.name || 'Your accountant',
+      clientName: docRequest.client.name,
+      items: JSON.parse(docRequest.items as string),
+      status: docRequest.status,
+      dueDate: docRequest.dueDate,
+    });
+  } catch (e) { next(e); }
+});
+
 // POST /portal/upload/:token - Public upload via token (no auth)
 router.post('/portal/:token', upload.single('file'), async (req, res, next) => {
   try {

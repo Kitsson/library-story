@@ -12,6 +12,7 @@ import { AdvisoryPage } from '@/pages/AdvisoryPage';
 import { DocumentRequestsPage } from '@/pages/DocumentRequestsPage';
 import { IntegrationsPage } from '@/pages/IntegrationsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
+import { PortalUploadPage } from '@/pages/PortalUploadPage';
 
 function App() {
   const { isLoading, isAuthenticated, loadUser } = useAuth();
@@ -28,6 +29,7 @@ function App() {
 
   return (
     <Routes>
+      <Route path="/portal/upload/:token" element={<PortalUploadPage />} />
       <Route path="/login" element={!isAuthenticated ? <LoginPage /> : <Navigate to="/" />} />
       <Route path="/register" element={!isAuthenticated ? <RegisterPage /> : <Navigate to="/" />} />
       <Route element={isAuthenticated ? <Layout /> : <Navigate to="/login" />}>
