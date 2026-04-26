@@ -38,7 +38,7 @@ export function SettingsPage() {
       setFormLoaded(false);
       toast.success('Email settings saved!');
     },
-    onError: (e: any) => toast.error(e.response?.data?.error || 'Save failed'),
+    onError: (e: any) => { toast.error(e.response?.data?.error || 'Save failed'); },
   });
 
   const testMutation = useMutation(emailSettingsApi.test, {
