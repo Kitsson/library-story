@@ -6,6 +6,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger';
 import { Prisma } from '@prisma/client';
+import { ZodError } from 'zod';
 
 export function errorHandler(
   err: Error,
@@ -25,6 +26,14 @@ export function errorHandler(
 
   // Don't leak error details in production
   const isDev = process.env.NODE_ENV === 'development';
+
+  // Handle Zod validation errors
+  if (err instanceof ZodError) {
+    return res.status(400).json({
+      error: 'Validation failed.',
+      details: err.errors.map(e => ({ field: e.path.join('.'), message: e.message })),
+    });
+  }
 
   // Handle Prisma errors
   if (err instanceof Prisma.PrismaClientKnownRequestError) {

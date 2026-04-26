@@ -17,9 +17,9 @@ const createSchema = z.object({
     name: z.string().min(1),
     description: z.string().optional(),
     required: z.boolean().default(true),
-  })),
+  })).default([]),
   channel: z.enum(['sms', 'email', 'portal']).default('sms'),
-  dueDate: z.string().datetime().optional(),
+  dueDate: z.preprocess(val => (val === '' || val === null) ? undefined : val, z.string().datetime().optional()),
 });
 
 // GET /api/v1/document-requests
