@@ -14,7 +14,7 @@ export function TimeTrackingPage() {
   const { data: clients } = useQuery('time-clients', () => clientApi.list().then(r => r.data));
 
   const createMutation = useMutation(timeApi.create, {
-    onSuccess: () => { queryClient.invalidateQueries(['time-entries', 'time-weekly']); setShowForm(false); toast.success('Time logged!'); },
+    onSuccess: () => { queryClient.invalidateQueries('time-entries'); queryClient.invalidateQueries('time-weekly'); setShowForm(false); toast.success('Time logged!'); },
   });
 
   const cats = ['bookkeeping', 'advisory', 'compliance', 'admin', 'meeting', 'other'];
