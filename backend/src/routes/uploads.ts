@@ -6,6 +6,7 @@ import { prisma } from '../utils/prisma';
 import { authenticate, optionalAuth, AuthRequest } from '../middleware/auth';
 import { logger } from '../utils/logger';
 import { sendUploadNotificationEmail } from '../services/email';
+import { buildCfg } from './emailSettings';
 
 const router = Router();
 
@@ -117,13 +118,14 @@ router.post('/portal/:token', upload.single('file'), async (req, res, next) => {
       if (requester?.organizationId) {
         const org = await prisma.organization.findUnique({
           where: { id: requester.organizationId },
-          select: { smtpHost: true, smtpPort: true, smtpUser: true, smtpPass: true, smtpFrom: true, smtpFromName: true, smtpSecure: true, emailNotifyOnUpload: true, name: true },
+          select: { smtpHost: true, smtpPort: true, smtpUser: true, smtpPass: true, smtpFrom: true, smtpFromName: true, smtpSecure: true, resendApiKey: true, emailNotifyOnUpload: true, name: true },
         });
 
-        if (org?.smtpHost && org.emailNotifyOnUpload) {
+        const emailReady = org && (org.resendApiKey || org.smtpHost);
+        if (emailReady && org.emailNotifyOnUpload) {
           const appUrl = process.env.APP_URL || 'https://klaryproject.vercel.app';
           await sendUploadNotificationEmail(
-            { host: org.smtpHost, port: org.smtpPort!, secure: org.smtpSecure, user: org.smtpUser!, pass: org.smtpPass!, from: org.smtpFrom!, fromName: org.smtpFromName! },
+            buildCfg(org),
             {
               accountantEmail: requester.email,
               accountantName: `${requester.firstName} ${requester.lastName}`,

@@ -7,16 +7,32 @@ import { testSmtpConnection } from '../services/email';
 const router = Router();
 router.use(authenticate);
 
-const smtpSchema = z.object({
-  smtpHost: z.string().min(1),
-  smtpPort: z.number().int().min(1).max(65535),
-  smtpUser: z.string().min(1),
-  smtpPass: z.string().min(1),
+const settingsSchema = z.object({
+  // Resend (API-based, works everywhere)
+  resendApiKey: z.string().optional(),
+  // SMTP (self-hosted / corporate email)
+  smtpHost: z.string().optional(),
+  smtpPort: z.number().int().min(1).max(65535).optional(),
+  smtpUser: z.string().optional(),
+  smtpPass: z.string().optional(),
   smtpFrom: z.string().email(),
   smtpFromName: z.string().min(1),
   smtpSecure: z.boolean().default(true),
   emailNotifyOnUpload: z.boolean().default(true),
 });
+
+function buildCfg(org: any) {
+  return {
+    resendApiKey: org.resendApiKey || undefined,
+    host: org.smtpHost || undefined,
+    port: org.smtpPort || undefined,
+    secure: org.smtpSecure,
+    user: org.smtpUser || undefined,
+    pass: org.smtpPass || undefined,
+    from: org.smtpFrom!,
+    fromName: org.smtpFromName!,
+  };
+}
 
 // GET /api/v1/email-settings
 router.get('/', async (req: AuthRequest, res, next) => {
@@ -26,17 +42,22 @@ router.get('/', async (req: AuthRequest, res, next) => {
       select: {
         smtpHost: true, smtpPort: true, smtpUser: true,
         smtpFrom: true, smtpFromName: true, smtpSecure: true,
-        emailNotifyOnUpload: true,
+        resendApiKey: true, emailNotifyOnUpload: true,
       },
     });
 
+    const hasResend = !!org?.resendApiKey;
+    const hasSmtp = !!org?.smtpHost;
+
     res.json({
-      configured: !!org?.smtpHost,
+      configured: hasResend || hasSmtp,
+      provider: hasResend ? 'resend' : hasSmtp ? 'smtp' : 'none',
       settings: {
+        resendApiKey: org?.resendApiKey ? '***' : '',
         smtpHost: org?.smtpHost || '',
         smtpPort: org?.smtpPort || 587,
         smtpUser: org?.smtpUser || '',
-        smtpPass: '',  // never return password
+        smtpPass: '',
         smtpFrom: org?.smtpFrom || '',
         smtpFromName: org?.smtpFromName || '',
         smtpSecure: org?.smtpSecure ?? true,
@@ -49,20 +70,26 @@ router.get('/', async (req: AuthRequest, res, next) => {
 // PATCH /api/v1/email-settings
 router.patch('/', requireRole('ADMIN', 'MANAGER'), async (req: AuthRequest, res, next) => {
   try {
-    const data = smtpSchema.parse(req.body);
+    const data = settingsSchema.parse(req.body);
+
+    const updateData: any = {
+      smtpFrom: data.smtpFrom,
+      smtpFromName: data.smtpFromName,
+      smtpSecure: data.smtpSecure,
+      emailNotifyOnUpload: data.emailNotifyOnUpload,
+    };
+
+    if (data.resendApiKey) updateData.resendApiKey = data.resendApiKey;
+    if (data.smtpHost) updateData.smtpHost = data.smtpHost;
+    if (data.smtpPort) updateData.smtpPort = data.smtpPort;
+    if (data.smtpUser) updateData.smtpUser = data.smtpUser;
+    if (data.smtpPass) updateData.smtpPass = data.smtpPass;
+
     await prisma.organization.update({
       where: { id: req.user!.organizationId! },
-      data: {
-        smtpHost: data.smtpHost,
-        smtpPort: data.smtpPort,
-        smtpUser: data.smtpUser,
-        smtpPass: data.smtpPass,
-        smtpFrom: data.smtpFrom,
-        smtpFromName: data.smtpFromName,
-        smtpSecure: data.smtpSecure,
-        emailNotifyOnUpload: data.emailNotifyOnUpload,
-      },
+      data: updateData,
     });
+
     res.json({ message: 'Email settings saved.' });
   } catch (e) { next(e); }
 });
@@ -72,21 +99,14 @@ router.post('/test', requireRole('ADMIN', 'MANAGER'), async (req: AuthRequest, r
   try {
     const org = await prisma.organization.findUnique({
       where: { id: req.user!.organizationId! },
-      select: { smtpHost: true, smtpPort: true, smtpUser: true, smtpPass: true, smtpFrom: true, smtpFromName: true, smtpSecure: true },
+      select: { smtpHost: true, smtpPort: true, smtpUser: true, smtpPass: true, smtpFrom: true, smtpFromName: true, smtpSecure: true, resendApiKey: true },
     });
 
-    if (!org?.smtpHost) return res.status(400).json({ error: 'Email not configured yet.' });
+    if (!org?.resendApiKey && !org?.smtpHost) {
+      return res.status(400).json({ error: 'Email not configured yet.' });
+    }
 
-    await testSmtpConnection({
-      host: org.smtpHost,
-      port: org.smtpPort!,
-      secure: org.smtpSecure,
-      user: org.smtpUser!,
-      pass: org.smtpPass!,
-      from: org.smtpFrom!,
-      fromName: org.smtpFromName!,
-    });
-
+    await testSmtpConnection(buildCfg(org));
     res.json({ message: 'Connection successful! Your email settings are working.' });
   } catch (e: any) {
     res.status(400).json({ error: `Connection failed: ${e.message}` });
@@ -94,3 +114,4 @@ router.post('/test', requireRole('ADMIN', 'MANAGER'), async (req: AuthRequest, r
 });
 
 export { router as emailSettingsRouter };
+export { buildCfg };

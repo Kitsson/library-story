@@ -6,4 +6,5 @@ ALTER TABLE "organizations"
   ADD COLUMN IF NOT EXISTS "smtp_from"     TEXT,
   ADD COLUMN IF NOT EXISTS "smtp_from_name" TEXT,
   ADD COLUMN IF NOT EXISTS "smtp_secure"   BOOLEAN NOT NULL DEFAULT TRUE,
+  ADD COLUMN IF NOT EXISTS "resend_api_key" TEXT,
   ADD COLUMN IF NOT EXISTS "email_notify_on_upload" BOOLEAN NOT NULL DEFAULT TRUE;

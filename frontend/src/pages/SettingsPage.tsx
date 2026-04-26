@@ -6,8 +6,8 @@ import { Building2, Shield, Users, CreditCard, Mail, CheckCircle, AlertCircle } 
 import toast from 'react-hot-toast';
 
 const SMTP_PRESETS: Record<string, { host: string; port: number; secure: boolean; label: string }> = {
-  gmail:   { host: 'smtp.gmail.com',      port: 587, secure: false, label: 'Gmail (App Password required)' },
-  outlook: { host: 'smtp.office365.com',  port: 587, secure: false, label: 'Outlook / Microsoft 365' },
+  gmail:   { host: 'smtp.gmail.com',      port: 587, secure: false, label: 'Gmail' },
+  outlook: { host: 'smtp.office365.com',  port: 587, secure: false, label: 'Outlook / M365' },
   zoho:    { host: 'smtp.zoho.eu',        port: 587, secure: false, label: 'Zoho Mail' },
   custom:  { host: '',                    port: 587, secure: true,  label: 'Custom SMTP' },
 };
@@ -15,12 +15,13 @@ const SMTP_PRESETS: Record<string, { host: string; port: number; secure: boolean
 export function SettingsPage() {
   const { user, organization } = useAuth();
   const queryClient = useQueryClient();
-  const [preset, setPreset] = useState('custom');
+  const [preset, setPreset] = useState('resend');
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   const { data: emailData } = useQuery('email-settings', () => emailSettingsApi.get().then(r => r.data));
 
   const [form, setForm] = useState({
+    resendApiKey: '',
     smtpHost: '', smtpPort: 587, smtpUser: '', smtpPass: '',
     smtpFrom: '', smtpFromName: '', smtpSecure: true, emailNotifyOnUpload: true,
   });
@@ -93,52 +94,79 @@ export function SettingsPage() {
           <p className="text-sm text-gray-500 mt-1">Connect your firm's email to send document requests and receive upload notifications.</p>
         </div>
         <div className="card-body space-y-5">
-          {/* Provider presets */}
+          {/* Provider tabs */}
           <div>
-            <label className="label">Email Provider</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1">
-              {Object.entries(SMTP_PRESETS).map(([key, p]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => applyPreset(key)}
-                  className={`px-3 py-2 text-xs rounded-lg border font-medium transition-colors ${preset === key ? 'border-klary-500 bg-klary-50 text-klary-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
-                >
-                  {key === 'gmail' ? 'Gmail' : key === 'outlook' ? 'Outlook' : key === 'zoho' ? 'Zoho' : 'Custom'}
+            <label className="label mb-2">Email Provider</label>
+            <div className="flex gap-2 flex-wrap">
+              {[
+                { key: 'resend', label: 'Resend (recommended)' },
+                { key: 'gmail', label: 'Gmail' },
+                { key: 'outlook', label: 'Outlook / M365' },
+                { key: 'zoho', label: 'Zoho' },
+                { key: 'custom', label: 'Custom SMTP' },
+              ].map(({ key, label }) => (
+                <button key={key} type="button" onClick={() => applyPreset(key)}
+                  className={`px-3 py-1.5 text-xs rounded-lg border font-medium transition-colors ${preset === key ? 'border-klary-500 bg-klary-50 text-klary-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+                  {label}
                 </button>
               ))}
             </div>
+            {preset === 'resend' && (
+              <p className="text-xs text-klary-600 mt-2">Works on all hosting providers. Free 3,000 emails/month. <a className="underline font-medium" href="https://resend.com" target="_blank" rel="noreferrer">Get a free API key →</a></p>
+            )}
             {preset === 'gmail' && (
-              <p className="text-xs text-amber-600 mt-2">Gmail requires an App Password. Enable 2FA → <a className="underline" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">create one here</a>.</p>
+              <p className="text-xs text-amber-600 mt-2">Requires an App Password (not your regular password). <a className="underline" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">Create one here →</a></p>
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="label">SMTP Host</label>
-              <input className="input" placeholder="smtp.gmail.com" value={form.smtpHost} onChange={e => setForm(f => ({ ...f, smtpHost: e.target.value }))} />
+          {/* Resend fields */}
+          {preset === 'resend' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <label className="label">Resend API Key</label>
+                <input className="input font-mono text-sm" placeholder="re_xxxxxxxxxxxxxxxxxxxx"
+                  value={form.resendApiKey} onChange={e => setForm(f => ({ ...f, resendApiKey: e.target.value }))} />
+              </div>
+              <div>
+                <label className="label">From Email <span className="text-gray-400 font-normal">(must be verified in Resend)</span></label>
+                <input className="input" placeholder="info@yourfirm.com" value={form.smtpFrom} onChange={e => setForm(f => ({ ...f, smtpFrom: e.target.value }))} />
+              </div>
+              <div>
+                <label className="label">From Name</label>
+                <input className="input" placeholder="Lindqvist Redovisning" value={form.smtpFromName} onChange={e => setForm(f => ({ ...f, smtpFromName: e.target.value }))} />
+              </div>
             </div>
-            <div>
-              <label className="label">Port</label>
-              <input type="number" className="input" placeholder="587" value={form.smtpPort} onChange={e => setForm(f => ({ ...f, smtpPort: parseInt(e.target.value) || 587 }))} />
+          )}
+
+          {/* SMTP fields */}
+          {preset !== 'resend' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="label">SMTP Host</label>
+                <input className="input" placeholder="smtp.gmail.com" value={form.smtpHost} onChange={e => setForm(f => ({ ...f, smtpHost: e.target.value }))} />
+              </div>
+              <div>
+                <label className="label">Port</label>
+                <input type="number" className="input" placeholder="587" value={form.smtpPort} onChange={e => setForm(f => ({ ...f, smtpPort: parseInt(e.target.value) || 587 }))} />
+              </div>
+              <div>
+                <label className="label">Username / Email</label>
+                <input className="input" placeholder="you@yourfirm.com" value={form.smtpUser} onChange={e => setForm(f => ({ ...f, smtpUser: e.target.value }))} />
+              </div>
+              <div>
+                <label className="label">Password / App Password</label>
+                <input type="password" className="input" placeholder={emailData?.configured ? '(saved — enter to update)' : 'Enter password'} value={form.smtpPass} onChange={e => setForm(f => ({ ...f, smtpPass: e.target.value }))} />
+              </div>
+              <div>
+                <label className="label">From Email</label>
+                <input className="input" placeholder="info@yourfirm.com" value={form.smtpFrom} onChange={e => setForm(f => ({ ...f, smtpFrom: e.target.value }))} />
+              </div>
+              <div>
+                <label className="label">From Name</label>
+                <input className="input" placeholder="Lindqvist Redovisning" value={form.smtpFromName} onChange={e => setForm(f => ({ ...f, smtpFromName: e.target.value }))} />
+              </div>
             </div>
-            <div>
-              <label className="label">Username / Email</label>
-              <input className="input" placeholder="you@yourfirm.com" value={form.smtpUser} onChange={e => setForm(f => ({ ...f, smtpUser: e.target.value }))} />
-            </div>
-            <div>
-              <label className="label">Password / App Password</label>
-              <input type="password" className="input" placeholder={emailData?.configured ? '(saved — enter to update)' : 'Enter password'} value={form.smtpPass} onChange={e => setForm(f => ({ ...f, smtpPass: e.target.value }))} />
-            </div>
-            <div>
-              <label className="label">From Email</label>
-              <input className="input" placeholder="info@yourfirm.com" value={form.smtpFrom} onChange={e => setForm(f => ({ ...f, smtpFrom: e.target.value }))} />
-            </div>
-            <div>
-              <label className="label">From Name</label>
-              <input className="input" placeholder="Lindqvist Redovisning" value={form.smtpFromName} onChange={e => setForm(f => ({ ...f, smtpFromName: e.target.value }))} />
-            </div>
-          </div>
+          )}
 
           <div className="flex items-center gap-6">
             <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">

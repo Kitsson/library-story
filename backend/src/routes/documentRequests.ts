@@ -5,6 +5,7 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 import { generateToken } from '../utils/crypto';
 import { logger } from '../utils/logger';
 import { sendDocumentRequestEmail } from '../services/email';
+import { buildCfg } from './emailSettings';
 
 const router = Router();
 router.use(authenticate);
@@ -95,17 +96,18 @@ router.post('/', async (req: AuthRequest, res, next) => {
     if (data.channel === 'email') {
       const org = await prisma.organization.findUnique({
         where: { id: orgId },
-        select: { smtpHost: true, smtpPort: true, smtpUser: true, smtpPass: true, smtpFrom: true, smtpFromName: true, smtpSecure: true, name: true },
+        select: { smtpHost: true, smtpPort: true, smtpUser: true, smtpPass: true, smtpFrom: true, smtpFromName: true, smtpSecure: true, resendApiKey: true, name: true },
       });
 
-      if (org?.smtpHost && client.email) {
+      const emailReady = org && (org.resendApiKey || org.smtpHost);
+      if (emailReady && client.email) {
         try {
           const appUrl = process.env.APP_URL || 'https://klaryproject.vercel.app';
           const uploadUrl = `${appUrl}/portal/upload/${uploadToken}`;
           const items = data.items.map(i => ({ name: i.name, required: i.required }));
 
           await sendDocumentRequestEmail(
-            { host: org.smtpHost, port: org.smtpPort!, secure: org.smtpSecure, user: org.smtpUser!, pass: org.smtpPass!, from: org.smtpFrom!, fromName: org.smtpFromName! },
+            buildCfg(org),
             {
               clientName: client.name,
               clientEmail: client.email,

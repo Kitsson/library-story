@@ -83,6 +83,7 @@ model Organization {
   smtpFrom     String?  @map("smtp_from")
   smtpFromName String?  @map("smtp_from_name")
   smtpSecure   Boolean  @default(true) @map("smtp_secure")
+  resendApiKey String?  @map("resend_api_key")
   emailNotifyOnUpload Boolean @default(true) @map("email_notify_on_upload")
 
   // Billing
