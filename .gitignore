@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.zip
+klary-landing-stripe/
+.env
+logs/
+uploads/
+*.log
+.DS_Store
