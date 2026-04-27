@@ -75,12 +75,16 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
 }));
 
-// Rate limiting
+// Rate limiting — skip for localhost so dev/test traffic is never blocked
+const isLocalhost = (req: any) =>
+  req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1';
+
 const rateLimiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'),
   max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'),
   standardHeaders: true,
   legacyHeaders: false,
+  skip: isLocalhost,
   message: {
     error: 'Too many requests. Please try again later.',
     retryAfter: 900,
@@ -97,8 +101,9 @@ app.use(rateLimiter);
 
 // Stricter rate limit for auth endpoints
 const authRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 attempts per 15 minutes
+  windowMs: 15 * 60 * 1000,
+  max: parseInt(process.env.AUTH_RATE_LIMIT_MAX || '10'),
+  skip: isLocalhost,
   message: { error: 'Too many login attempts. Please try again after 15 minutes.' },
 });
 app.use('/api/v1/auth/login', authRateLimiter);
