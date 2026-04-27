@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: klary-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: klary_user
+      POSTGRES_PASSWORD: klary_password
+      POSTGRES_DB: klary_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U klary_user -d klary_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: ../backend
+      dockerfile: ../docker/Dockerfile.backend
+    container_name: klary-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://klary_user:klary_password@db:5432/klary_db?schema=public
+      JWT_SECRET: ${JWT_SECRET:-change-this-to-a-64-char-random-string}
+      BCRYPT_ROUNDS: 12
+      CORS_ORIGIN: http://localhost:5173
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER:-}
+      RATE_LIMIT_WINDOW_MS: 900000
+      RATE_LIMIT_MAX_REQUESTS: 100
+      LOG_LEVEL: info
+    ports:
+      - "4000:4000"
+    volumes:
+      - uploads:/app/uploads
+
+  # Frontend (served via nginx in production)
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    container_name: klary-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    environment:
+      - VITE_API_URL=/api/v1
+
+volumes:
+  postgres_data:
+  uploads:
