@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { Sparkles, Check } from 'lucide-react';
+import { Sparkles, Check, Download, Database } from 'lucide-react';
 import { transactionApi } from '@/services/api';
 import toast from 'react-hot-toast';
 
@@ -18,6 +18,30 @@ export function TransactionsPage() {
     onSuccess: () => { queryClient.invalidateQueries('transactions'); toast.success('Confirmed!'); },
   });
 
+  const seedMutation = useMutation(() => transactionApi.seedDemo(), {
+    onSuccess: (res) => {
+      queryClient.invalidateQueries('transactions');
+      setFilter('UNCATEGORIZED');
+      toast.success(res.data.message);
+    },
+    onError: () => { toast.error('Could not load demo data.'); },
+  });
+
+  const handleExportCsv = async () => {
+    try {
+      toast.success('Downloading CSV...');
+      const res = await transactionApi.exportCsv({ status: filter || undefined });
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'text/csv' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'klary-transactions.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Export failed.');
+    }
+  };
+
   const statusColors: Record<string, string> = {
     UNCATEGORIZED: 'badge-yellow',
     AI_SUGGESTED: 'badge-blue',
@@ -33,7 +57,17 @@ export function TransactionsPage() {
           <h3 className="text-lg font-semibold text-gray-900">Transactions</h3>
           <p className="text-sm text-gray-500 mt-0.5">AI-powered categorization for your client transactions</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={() => seedMutation.mutate()} disabled={seedMutation.isLoading}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50">
+            <Database className="w-3.5 h-3.5" />
+            {seedMutation.isLoading ? 'Loading...' : 'Load Demo Data'}
+          </button>
+          <button onClick={handleExportCsv}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+            <Download className="w-3.5 h-3.5" /> Export CSV
+          </button>
+          <div className="w-px h-5 bg-gray-200" />
           {['ALL', 'UNCATEGORIZED', 'AI_SUGGESTED', 'CONFIRMED'].map(f => (
             <button key={f} onClick={() => setFilter(f === 'ALL' ? '' : f)}
               className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${filter === (f === 'ALL' ? '' : f) ? 'bg-klary-100 text-klary-700' : 'text-gray-500 hover:bg-gray-100'}`}>
