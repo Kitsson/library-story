@@ -7,7 +7,8 @@ import OpenAI from 'openai';
 import { logger } from '../utils/logger';
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.GROQ_API_KEY,
+  baseURL: 'https://api.groq.com/openai/v1',
 });
 
 interface TransactionInput {
@@ -30,7 +31,7 @@ export class OpenAIService {
   async categorizeTransaction(input: TransactionInput): Promise<CategorizationResult> {
     try {
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: 'llama-3.3-70b-versatile',
         messages: [
           {
             role: 'system',
@@ -101,7 +102,7 @@ Client Industry: ${input.clientIndustry}`,
   }> {
     try {
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: 'llama-3.3-70b-versatile',
         messages: [
           {
             role: 'system',
