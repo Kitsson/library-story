@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { Sparkles, Check, Download, Database } from 'lucide-react';
-import { transactionApi } from '@/services/api';
+import { Sparkles, Check, Download, Database, Info } from 'lucide-react';
+import { transactionApi, dashboardApi } from '@/services/api';
 import toast from 'react-hot-toast';
 
 export function TransactionsPage() {
   const [filter, setFilter] = useState('UNCATEGORIZED');
+  const [tooltip, setTooltip] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery(['transactions', filter], () => transactionApi.list({ status: filter }).then(r => r.data));
+  const { data: summary } = useQuery('dashboard-summary', () => dashboardApi.summary().then(r => r.data));
 
   const categorizeMutation = useMutation((id: string) => transactionApi.categorize(id), {
-    onSuccess: () => { queryClient.invalidateQueries('transactions'); toast.success('AI categorized!'); },
+    onSuccess: () => { queryClient.invalidateQueries('transactions'); queryClient.invalidateQueries('dashboard-summary'); toast.success('AI categorized!'); },
   });
 
   const confirmMutation = useMutation(({ id, data }: any) => transactionApi.confirm(id, data), {
@@ -50,6 +52,11 @@ export function TransactionsPage() {
     FLAGGED: 'badge-red',
   };
 
+  const quota = summary?.quota?.ai;
+  const quotaPct = quota?.total > 0 ? quota.used / quota.total : 0;
+  const quotaAtLimit = quota && quota.used >= quota.total;
+  const quotaNearLimit = quota && quotaPct >= 0.8 && !quotaAtLimit;
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -77,11 +84,31 @@ export function TransactionsPage() {
         </div>
       </div>
 
+      {quotaAtLimit && (
+        <div className="rounded-lg p-3 bg-red-50 border border-red-200 text-sm text-red-800 flex items-center justify-between">
+          <span><strong>AI quota reached.</strong> Upgrade to KlarPro for unlimited AI categorization.</span>
+          <a href="https://buy.stripe.com/klarpro" className="ml-4 text-xs font-semibold underline shrink-0">Upgrade →</a>
+        </div>
+      )}
+      {quotaNearLimit && (
+        <div className="rounded-lg p-3 bg-yellow-50 border border-yellow-200 text-sm text-yellow-800 flex items-center justify-between">
+          <span><strong>{Math.round(quotaPct * 100)}% of AI quota used</strong> ({quota.used}/{quota.total}). Upgrade for unlimited AI.</span>
+          <a href="https://buy.stripe.com/klarpro" className="ml-4 text-xs font-semibold underline shrink-0">Upgrade →</a>
+        </div>
+      )}
+
       <div className="card overflow-hidden">
         {isLoading ? <div className="p-8 text-center text-gray-400">Loading...</div> : (
           <table className="w-full">
             <thead className="bg-gray-50">
-              <tr><th className="table-header">Date</th><th className="table-header">Description</th><th className="table-header">Amount</th><th className="table-header">Status</th><th className="table-header">AI Suggestion</th><th className="table-header">Actions</th></tr>
+              <tr>
+                <th className="table-header">Date</th>
+                <th className="table-header">Description</th>
+                <th className="table-header">Amount</th>
+                <th className="table-header">Status</th>
+                <th className="table-header">AI Suggestion</th>
+                <th className="table-header">Actions</th>
+              </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {data?.transactions?.length === 0 && (
@@ -95,17 +122,42 @@ export function TransactionsPage() {
                   <td className="table-cell"><span className={statusColors[tx.status] || 'badge-blue'}>{tx.status.replace(/_/g, ' ')}</span></td>
                   <td className="table-cell">
                     {tx.suggestedAccount ? (
-                      <div>
-                        <span className="text-sm font-medium text-klary-700">{tx.suggestedAccount}</span>
-                        {tx.aiConfidence && <span className="text-xs text-gray-400 ml-2">{(tx.aiConfidence * 100).toFixed(0)}% confidence</span>}
+                      <div className="flex items-center gap-1.5">
+                        <div>
+                          <span className="text-sm font-medium text-klary-700">{tx.suggestedAccount}</span>
+                          {tx.aiConfidence && (
+                            <span className={`text-xs ml-2 ${tx.aiConfidence >= 0.8 ? 'text-emerald-600' : tx.aiConfidence >= 0.6 ? 'text-yellow-600' : 'text-gray-400'}`}>
+                              {(tx.aiConfidence * 100).toFixed(0)}%
+                            </span>
+                          )}
+                        </div>
+                        {tx.aiReasoning && (
+                          <div className="relative">
+                            <button
+                              onMouseEnter={() => setTooltip(tx.id)}
+                              onMouseLeave={() => setTooltip(null)}
+                              className="text-gray-400 hover:text-klary-600 transition-colors"
+                            >
+                              <Info className="w-3.5 h-3.5" />
+                            </button>
+                            {tooltip === tx.id && (
+                              <div className="absolute left-5 top-0 z-10 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-xl">
+                                <p className="font-semibold mb-1 text-gray-300">AI Reasoning</p>
+                                <p className="leading-relaxed">{tx.aiReasoning}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ) : <span className="text-gray-400">—</span>}
                   </td>
                   <td className="table-cell">
                     <div className="flex gap-2">
                       {tx.status === 'UNCATEGORIZED' && (
-                        <button onClick={() => categorizeMutation.mutate(tx.id)} disabled={categorizeMutation.isLoading}
-                          className="flex items-center gap-1 text-xs font-medium text-klary-600 hover:text-klary-700 bg-klary-50 px-2 py-1 rounded">
+                        <button onClick={() => categorizeMutation.mutate(tx.id)}
+                          disabled={categorizeMutation.isLoading || quotaAtLimit}
+                          title={quotaAtLimit ? 'AI quota reached — upgrade to continue' : undefined}
+                          className="flex items-center gap-1 text-xs font-medium text-klary-600 hover:text-klary-700 bg-klary-50 px-2 py-1 rounded disabled:opacity-40 disabled:cursor-not-allowed">
                           <Sparkles className="w-3 h-3" /> AI
                         </button>
                       )}

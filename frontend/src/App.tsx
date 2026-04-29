@@ -13,6 +13,7 @@ import { DocumentRequestsPage } from '@/pages/DocumentRequestsPage';
 import { IntegrationsPage } from '@/pages/IntegrationsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { PortalUploadPage } from '@/pages/PortalUploadPage';
+import { CompliancePage } from '@/pages/CompliancePage';
 
 function App() {
   const { isLoading, isAuthenticated, loadUser } = useAuth();
@@ -40,6 +41,7 @@ function App() {
         <Route path="/advisory" element={<AdvisoryPage />} />
         <Route path="/documents" element={<DocumentRequestsPage />} />
         <Route path="/integrations" element={<IntegrationsPage />} />
+        <Route path="/compliance" element={<CompliancePage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
     </Routes>

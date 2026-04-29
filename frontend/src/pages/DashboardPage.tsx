@@ -113,8 +113,8 @@ export function DashboardPage() {
               ) : (
                 <div className="text-center py-8 text-gray-400">
                   <MessageSquare className="w-10 h-10 mx-auto mb-2" />
-                  <p>No advisory opportunities detected yet.</p>
-                  <p className="text-sm mt-1">Client conversations will be analyzed automatically.</p>
+                  <p className="font-medium text-gray-600">No advisory opportunities yet.</p>
+                  <p className="text-sm mt-1 max-w-xs mx-auto">KLARY detects advisory opportunities in your existing client base — 30–50% more billable work, zero extra effort.</p>
                 </div>
               )}
             </div>
@@ -131,9 +131,18 @@ export function DashboardPage() {
             <div className="card-body space-y-4">
               {s?.quota && (
                 <>
-                  <QuotaBar label="SMS Requests" used={s.quota.sms.used} total={s.quota.sms.total} color="bg-purple-500" />
-                  <QuotaBar label="AI Operations" used={s.quota.ai.used} total={s.quota.ai.total} color="bg-klary-500" />
-                  <QuotaBar label="Clients" used={s.clients.total} total={s.quota.clients} color="bg-emerald-500" />
+                  <QuotaBar label="AI Operations" used={s.quota.ai.used} total={s.quota.ai.total} />
+                  <QuotaBar label="SMS Requests" used={s.quota.sms.used} total={s.quota.sms.total} />
+                  <QuotaBar label="Clients" used={s.clients.total} total={s.quota.clients} />
+                  {s.quota.ai.total > 0 && s.quota.ai.used / s.quota.ai.total >= 0.8 && (
+                    <div className={`rounded-lg p-3 text-xs ${s.quota.ai.used >= s.quota.ai.total ? 'bg-red-50 text-red-800' : 'bg-yellow-50 text-yellow-800'}`}>
+                      {s.quota.ai.used >= s.quota.ai.total
+                        ? <><strong>AI quota reached.</strong> Upgrade to KlarPro for unlimited AI categorization.</>
+                        : <><strong>80% of AI quota used.</strong> Upgrade to KlarPro for unlimited AI.</>
+                      }
+                      {' '}<a href="https://buy.stripe.com/klarpro" className="underline font-semibold">Upgrade →</a>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -172,16 +181,17 @@ export function DashboardPage() {
             </div>
           </div>
 
-          {/* KLARY Tip */}
+          {/* KLARY Value Prop */}
           <div className="card bg-gradient-to-br from-klary-50 to-white border-klary-200">
             <div className="card-body">
               <div className="flex items-center gap-2 mb-2">
                 <Zap className="w-4 h-4 text-klary-600" />
-                <span className="text-sm font-semibold text-klary-800">Pro Tip</span>
+                <span className="text-sm font-semibold text-klary-800">Did you know?</span>
               </div>
               <p className="text-sm text-gray-600">
-                Connect your accounting software under <Link to="/integrations" className="text-klary-600 font-medium">Integrations</Link> to enable AI transaction categorization and automatic data sync.
+                The average KLARY firm recovers <span className="font-semibold text-klary-700">300+ billable hours per year</span> — at 1,200 kr/h that's 360,000 kr in recaptured revenue.
               </p>
+              <p className="text-xs text-gray-400 mt-2">Connect your data under <Link to="/integrations" className="text-klary-600 font-medium">Integrations</Link> to get started.</p>
             </div>
           </div>
         </div>
@@ -190,16 +200,18 @@ export function DashboardPage() {
   );
 }
 
-function QuotaBar({ label, used, total, color }: { label: string; used: number; total: number; color: string }) {
-  const pct = Math.min((used / total) * 100, 100);
+function QuotaBar({ label, used, total }: { label: string; used: number; total: number }) {
+  const pct = total > 0 ? Math.min((used / total) * 100, 100) : 0;
+  const barColor = pct >= 80 ? 'bg-red-500' : pct >= 60 ? 'bg-yellow-500' : 'bg-emerald-500';
+  const textColor = pct >= 80 ? 'text-red-600' : pct >= 60 ? 'text-yellow-600' : 'text-gray-900';
   return (
     <div>
       <div className="flex justify-between text-sm mb-1">
         <span className="text-gray-600">{label}</span>
-        <span className="text-gray-900 font-medium">{used} / {total}</span>
+        <span className={`font-medium ${textColor}`}>{used} / {total}</span>
       </div>
       <div className="w-full bg-gray-200 rounded-full h-2">
-        <div className={`${color} h-2 rounded-full transition-all`} style={{ width: `${pct}%` }}></div>
+        <div className={`${barColor} h-2 rounded-full transition-all`} style={{ width: `${pct}%` }}></div>
       </div>
     </div>
   );

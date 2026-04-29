@@ -166,7 +166,8 @@ model Client {
   documentRequests DocumentRequest[]
   advisoryOpportunities AdvisoryOpportunity[]
   activities  ClientActivity[]
-  
+  complianceDeadlines ComplianceDeadline[]
+
   @@index([organizationId])
   @@index([status])
   @@map("clients")
@@ -554,6 +555,30 @@ enum IntegrationStatus {
   ERROR
   EXPIRED
   DISABLED
+}
+
+// ============================================
+// Swedish Compliance Calendar
+// ============================================
+
+model ComplianceDeadline {
+  id         String   @id @default(uuid())
+
+  type       String   // MOMS_Q, MOMS_M, ARBETSGIVAR, INKOMST, ARSREDOVISNING, CUSTOM
+  dueDate    DateTime @map("due_date")
+  status     String   @default("UPCOMING") // UPCOMING, DUE_SOON, OVERDUE, COMPLETED
+  notes      String?
+
+  // Relations
+  clientId   String   @map("client_id")
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([clientId, dueDate])
+  @@index([status])
+  @@map("compliance_deadlines")
 }
 
 // ============================================

@@ -97,3 +97,11 @@ export const emailSettingsApi = {
   save: (data: any) => api.patch('/email-settings', data),
   test: () => api.post('/email-settings/test'),
 };
+
+// Compliance Calendar
+export const complianceApi = {
+  list: (params?: any) => api.get('/compliance', { params }),
+  generate: (clientId: string, year?: number) => api.post(`/compliance/generate/${clientId}`, { year }),
+  update: (id: string, data: any) => api.patch(`/compliance/${id}`, data),
+  remove: (id: string) => api.delete(`/compliance/${id}`),
+};

@@ -32,7 +32,7 @@ export function LoginPage() {
             <Zap className="w-6 h-6 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Welcome back to KLARY</h1>
-          <p className="text-gray-500 mt-1">Sign in to your account</p>
+          <p className="text-gray-500 mt-1">The AI copilot for Swedish accounting firms</p>
         </div>
 
         <div className="card p-8">

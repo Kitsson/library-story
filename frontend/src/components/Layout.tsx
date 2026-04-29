@@ -1,7 +1,7 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Clock, CreditCard, Lightbulb,
-  FileText, Plug, Settings, LogOut, Menu, X, Zap
+  FileText, Plug, Settings, LogOut, Menu, X, Zap, CalendarCheck
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -13,6 +13,7 @@ const navItems = [
   { path: '/transactions', label: 'Transactions', icon: CreditCard },
   { path: '/advisory', label: 'Advisory', icon: Lightbulb },
   { path: '/documents', label: 'Documents', icon: FileText },
+  { path: '/compliance', label: 'Compliance', icon: CalendarCheck },
   { path: '/integrations', label: 'Integrations', icon: Plug },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];

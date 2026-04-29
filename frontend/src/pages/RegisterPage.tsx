@@ -45,7 +45,7 @@ export function RegisterPage() {
             <Zap className="w-6 h-6 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Start your KLARY journey</h1>
-          <p className="text-gray-500 mt-1">Free 14-day trial, no credit card required</p>
+          <p className="text-gray-500 mt-1">The AI copilot for Swedish accounting firms — free 14-day trial</p>
         </div>
 
         <div className="card p-8">
