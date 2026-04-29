@@ -90,7 +90,7 @@ export function AdvisoryPage() {
                       <span className="text-gray-500">{opp.estimatedHours}h estimated</span>
                       <span className="font-medium text-emerald-600">{opp.estimatedValue?.toLocaleString()} SEK</span>
                       {conf && <span className={`${confColor} font-medium`}>{conf}% AI confidence</span>}
-                      {(ev.content || ev.topics?.length > 0) && (
+                      {(ev.content || (ev.topics && ev.topics.length > 0)) && (
                         <button
                           onClick={() => setExpanded(isExpanded ? null : opp.id)}
                           className="flex items-center gap-1 text-klary-600 hover:text-klary-700 font-medium"
@@ -101,9 +101,9 @@ export function AdvisoryPage() {
                       )}
                     </div>
 
-                    {isExpanded && (ev.content || ev.topics?.length > 0) && (
+                    {isExpanded && (ev.content || (ev.topics && ev.topics.length > 0)) && (
                       <div className="mt-3 p-3 bg-klary-50 border border-klary-100 rounded-lg space-y-2">
-                        {ev.topics?.length > 0 && (
+                        {ev.topics && ev.topics.length > 0 && (
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-xs font-semibold text-klary-700">Detected topics:</span>
                             {ev.topics.map((t: string) => (

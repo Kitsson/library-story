@@ -41,7 +41,7 @@ export function CompliancePage() {
         const name = clientsData?.clients?.find((c: any) => c.id === clientId)?.name || 'client';
         toast.success(`Generated deadlines for ${name}`);
       },
-      onError: () => toast.error('Failed to generate deadlines'),
+      onError: () => { toast.error('Failed to generate deadlines'); },
     }
   );
 
