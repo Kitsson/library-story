@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { emailSettingsApi } from '@/services/api';
-import { Building2, Shield, Users, CreditCard, Mail, CheckCircle, AlertCircle } from 'lucide-react';
+import { Building2, Shield, Users, CreditCard, Mail, CheckCircle, AlertCircle, MessageSquare } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const SMTP_PRESETS: Record<string, { host: string; port: number; secure: boolean; label: string }> = {
@@ -201,6 +201,39 @@ export function SettingsPage() {
             >
               {testMutation.isLoading ? 'Testing…' : 'Test Connection'}
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* SMS / Twilio */}
+      <div className="card">
+        <div className="card-header">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-klary-600" />
+              <h3 className="font-semibold text-gray-900">SMS Settings</h3>
+            </div>
+            <span className="flex items-center gap-1 text-xs text-gray-500 font-medium">
+              Platform-level
+            </span>
+          </div>
+          <p className="text-sm text-gray-500 mt-1">SMS document requests are sent via Twilio, configured at the server level by your administrator.</p>
+        </div>
+        <div className="card-body space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">SMS Quota</label>
+              <p className="text-gray-900 font-medium">
+                {current.features.find(f => f.includes('SMS')) || 'See plan features'}
+              </p>
+            </div>
+            <div>
+              <label className="label">Provider</label>
+              <p className="text-gray-900">Twilio</p>
+            </div>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-600">
+            To send SMS document requests, go to <strong>Documents</strong> → create a new request and select <strong>SMS</strong> as the channel. Clients receive a direct link to upload documents.
           </div>
         </div>
       </div>

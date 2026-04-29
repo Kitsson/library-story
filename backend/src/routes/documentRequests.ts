@@ -5,6 +5,7 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 import { generateToken } from '../utils/crypto';
 import { logger } from '../utils/logger';
 import { sendDocumentRequestEmail } from '../services/email';
+import { sendDocumentRequestSms, isSmsConfigured } from '../services/sms';
 import { buildCfg } from './emailSettings';
 
 const router = Router();
@@ -85,10 +86,37 @@ router.post('/', async (req: AuthRequest, res, next) => {
       include: { client: { select: { id: true, name: true, phone: true, email: true } } },
     });
 
-    // SMS channel is not yet implemented — reject early so accountants are not misled
+    // SMS channel — send via Twilio if configured
     if (data.channel === 'sms') {
-      await prisma.documentRequest.deleteMany({ where: { id: request.id } });
-      return res.status(400).json({ error: 'SMS channel is not yet available. Please use the email or portal channel.' });
+      if (!isSmsConfigured()) {
+        await prisma.documentRequest.deleteMany({ where: { id: request.id } });
+        return res.status(400).json({ error: 'SMS is not configured on this server. Contact your administrator.' });
+      }
+      if (!client.phone) {
+        await prisma.documentRequest.deleteMany({ where: { id: request.id } });
+        return res.status(400).json({ error: 'This client has no phone number. Add a phone number to their profile first.' });
+      }
+      const smsOrg = await prisma.organization.findUnique({ where: { id: orgId }, select: { name: true, smsUsed: true, smsQuota: true } });
+      if (smsOrg && smsOrg.smsUsed >= smsOrg.smsQuota) {
+        await prisma.documentRequest.deleteMany({ where: { id: request.id } });
+        return res.status(429).json({ error: 'SMS quota reached. Upgrade your plan to send more SMS messages.' });
+      }
+      const appUrl = process.env.APP_URL || 'https://klaryproject.vercel.app';
+      const smsUploadUrl = `${appUrl}/portal/upload/${uploadToken}`;
+      try {
+        await sendDocumentRequestSms(client.phone, {
+          firmName: smsOrg?.name || 'Your accountant',
+          requestTitle: data.title,
+          uploadUrl: smsUploadUrl,
+          dueDate: data.dueDate ? new Date(data.dueDate).toLocaleDateString('sv-SE') : undefined,
+        });
+        await prisma.documentRequest.update({ where: { id: request.id }, data: { status: 'SENT', sentAt: new Date() } });
+        await prisma.organization.update({ where: { id: orgId }, data: { smsUsed: { increment: 1 } } });
+        logger.info(`SMS document request sent for org ${orgId}`);
+      } catch (smsErr: any) {
+        logger.error(`SMS send failed: ${smsErr.message}`);
+        // Keep request as DRAFT so accountant can retry with email/portal
+      }
     }
 
     // Send email if email channel

@@ -105,3 +105,9 @@ export const complianceApi = {
   update: (id: string, data: any) => api.patch(`/compliance/${id}`, data),
   remove: (id: string) => api.delete(`/compliance/${id}`),
 };
+
+// KYC / AML
+export const kycApi = {
+  get: (clientId: string) => api.get(`/kyc/${clientId}`),
+  update: (clientId: string, data: any) => api.patch(`/kyc/${clientId}`, data),
+};

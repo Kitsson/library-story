@@ -24,6 +24,7 @@ import { dashboardRouter } from './routes/dashboard';
 import { webhookRouter } from './routes/webhooks';
 import { emailSettingsRouter } from './routes/emailSettings';
 import { complianceRouter } from './routes/compliance';
+import { kycRouter } from './routes/kyc';
 import { errorHandler } from './middleware/errorHandler';
 import { requestValidator } from './middleware/requestValidator';
 import { logger } from './utils/logger';
@@ -140,6 +141,7 @@ app.use('/api/v1/integrations', integrationRouter);
 app.use('/api/v1/dashboard', dashboardRouter);
 app.use('/api/v1/email-settings', emailSettingsRouter);
 app.use('/api/v1/compliance', complianceRouter);
+app.use('/api/v1/kyc', kycRouter);
 
 // Client portal (public, no auth required for upload)
 app.use('/portal', express.static(path.join(__dirname, '../public/portal')));

@@ -153,6 +153,13 @@ model Client {
   organizationId String @map("organization_id")
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   
+  // KYC / AML (Penningtvättlagen)
+  kycStatus    String?   @default("PENDING") @map("kyc_status") // PENDING, IN_PROGRESS, APPROVED, REJECTED, EXPIRED
+  kycRiskLevel String?   @map("kyc_risk_level") // LOW, MEDIUM, HIGH, CRITICAL
+  kycNotes     String?   @map("kyc_notes")
+  kycVerifiedAt DateTime? @map("kyc_verified_at")
+  kycChecklist  Json?    @map("kyc_checklist") // [{item, completed, required}]
+
   // Accounting software link
   externalId  String?  @map("external_id")
   
