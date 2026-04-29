@@ -12,7 +12,8 @@ const AUTH_TAG_LENGTH = 16;
 
 // Derive encryption key from environment variable
 function getKey(): Buffer {
-  const secret = process.env.JWT_SECRET || 'default-secret-change-in-production';
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error('JWT_SECRET environment variable is required.');
   return crypto.scryptSync(secret, 'klary-salt', KEY_LENGTH);
 }
 

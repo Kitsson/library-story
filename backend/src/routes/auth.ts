@@ -10,22 +10,17 @@ import Stripe from 'stripe';
 import { z } from 'zod';
 import { prisma } from '../utils/prisma';
 import { logger } from '../utils/logger';
+import { PRICE_TIER_MAP } from '../config/tiers';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2023-10-16' as any,
 });
 
-const PRICE_TIER_MAP: Record<string, {
-  tier: 'KLARSTART' | 'KLARPRO' | 'KLARFIRM';
-  maxUsers: number; maxClients: number; smsQuota: number; aiQuota: number;
-}> = {
-  'price_1TQDynGd49W60xYGre2aRiOO': { tier: 'KLARSTART', maxUsers: 3,  maxClients: 10,    smsQuota: 50,    aiQuota: 200   },
-  'price_1TQE4DGd49W60xYGR36TO7D3': { tier: 'KLARPRO',   maxUsers: 15, maxClients: 50,    smsQuota: 300,   aiQuota: 99999 },
-  'price_1TQE6kGd49W60xYGnEICl8aA': { tier: 'KLARFIRM',  maxUsers: 50, maxClients: 99999, smsQuota: 99999, aiQuota: 99999 },
-};
-
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required.');
+}
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || '12');
 
 // Validation schemas
@@ -59,7 +54,8 @@ function generateTokens(userId: string) {
  */
 router.post('/register', async (req, res, next) => {
   try {
-    const data = registerSchema.parse(req.body);
+    const raw = registerSchema.parse(req.body);
+    const data = { ...raw, email: raw.email.toLowerCase() };
 
     // Check if email already exists
     const existing = await prisma.user.findUnique({
@@ -157,7 +153,8 @@ router.post('/register', async (req, res, next) => {
  */
 router.post('/login', async (req, res, next) => {
   try {
-    const data = loginSchema.parse(req.body);
+    const raw = loginSchema.parse(req.body);
+    const data = { ...raw, email: raw.email.toLowerCase() };
 
     // Find user
     const user = await prisma.user.findUnique({

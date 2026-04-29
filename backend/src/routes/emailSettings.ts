@@ -40,7 +40,7 @@ router.get('/', async (req: AuthRequest, res, next) => {
     const org = await prisma.organization.findUnique({
       where: { id: req.user!.organizationId! },
       select: {
-        smtpHost: true, smtpPort: true, smtpUser: true,
+        smtpHost: true, smtpPort: true, smtpUser: true, smtpPass: true,
         smtpFrom: true, smtpFromName: true, smtpSecure: true,
         resendApiKey: true, emailNotifyOnUpload: true,
       },
@@ -58,6 +58,7 @@ router.get('/', async (req: AuthRequest, res, next) => {
         smtpPort: org?.smtpPort || 587,
         smtpUser: org?.smtpUser || '',
         smtpPass: '',
+        hasSmtpPass: !!org?.smtpPass,
         smtpFrom: org?.smtpFrom || '',
         smtpFromName: org?.smtpFromName || '',
         smtpSecure: org?.smtpSecure ?? true,

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../utils/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
-import { OpenAIService } from '../services/openai';
+import { OpenAIService } from '../services/ai';
 
 const router = Router();
 router.use(authenticate);
@@ -12,7 +12,9 @@ router.get('/', async (req: AuthRequest, res, next) => {
   try {
     const { clientId, status, page = '1', limit = '50' } = req.query;
     const orgId = req.user!.organizationId!;
-    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+    const pageNum = Math.max(1, parseInt(page as string) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 50));
+    const skip = (pageNum - 1) * limitNum;
 
     const where: any = {
       client: { organizationId: orgId },
@@ -21,7 +23,7 @@ router.get('/', async (req: AuthRequest, res, next) => {
     if (status) where.status = status as string;
 
     const [transactions, total] = await Promise.all([
-      prisma.transaction.findMany({ where, skip, take: parseInt(limit as string),
+      prisma.transaction.findMany({ where, skip, take: limitNum,
         orderBy: { date: 'desc' },
         include: { client: { select: { id: true, name: true } } },
       }),
@@ -48,16 +50,22 @@ router.post('/:id/categorize', async (req: AuthRequest, res, next) => {
       clientIndustry: tx.client.industry || 'unknown',
     });
 
-    await prisma.transaction.update({
-      where: { id: tx.id },
-      data: {
-        suggestedAccount: result.account,
-        suggestedVatCode: result.vatCode,
-        aiConfidence: result.confidence,
-        aiReasoning: result.reasoning,
-        status: 'AI_SUGGESTED',
-      },
-    });
+    await Promise.all([
+      prisma.transaction.update({
+        where: { id: tx.id },
+        data: {
+          suggestedAccount: result.account,
+          suggestedVatCode: result.vatCode,
+          aiConfidence: result.confidence,
+          aiReasoning: result.reasoning,
+          status: 'AI_SUGGESTED',
+        },
+      }),
+      prisma.organization.update({
+        where: { id: req.user!.organizationId! },
+        data: { aiUsed: { increment: 1 } },
+      }),
+    ]);
 
     res.json({ message: 'AI categorization complete.', suggestion: result });
   } catch (e) { next(e); }
@@ -91,6 +99,7 @@ router.post('/bulk-categorize', async (req: AuthRequest, res, next) => {
     });
 
     const results = [];
+    let aiCallCount = 0;
     for (const tx of transactions) {
       try {
         const result = await openai.categorizeTransaction({
@@ -104,10 +113,18 @@ router.post('/bulk-categorize', async (req: AuthRequest, res, next) => {
             aiConfidence: result.confidence, aiReasoning: result.reasoning, status: 'AI_SUGGESTED',
           },
         });
+        aiCallCount++;
         results.push({ id: tx.id, status: 'success', suggestion: result });
       } catch (err) {
         results.push({ id: tx.id, status: 'error', error: (err as Error).message });
       }
+    }
+
+    if (aiCallCount > 0) {
+      await prisma.organization.update({
+        where: { id: req.user!.organizationId! },
+        data: { aiUsed: { increment: aiCallCount } },
+      });
     }
 
     res.json({ message: `Processed ${results.length} transactions.`, results });

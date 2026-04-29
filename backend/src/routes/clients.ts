@@ -23,7 +23,9 @@ router.get('/', async (req: AuthRequest, res, next) => {
   try {
     const { status, search, page = '1', limit = '50' } = req.query;
     const orgId = req.user!.organizationId!;
-    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+    const pageNum = Math.max(1, parseInt(page as string) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 50));
+    const skip = (pageNum - 1) * limitNum;
 
     const where: any = { organizationId: orgId };
     if (status) where.status = status;
@@ -37,7 +39,7 @@ router.get('/', async (req: AuthRequest, res, next) => {
 
     const [clients, total] = await Promise.all([
       prisma.client.findMany({
-        where, skip, take: parseInt(limit as string),
+        where, skip, take: limitNum,
         orderBy: { name: 'asc' },
         select: {
           id: true, name: true, orgNumber: true, email: true,
@@ -49,7 +51,7 @@ router.get('/', async (req: AuthRequest, res, next) => {
       prisma.client.count({ where }),
     ]);
 
-    res.json({ clients, total, page: parseInt(page as string), limit: parseInt(limit as string) });
+    res.json({ clients, total, page: pageNum, limit: limitNum });
   } catch (e) { next(e); }
 });
 
@@ -84,9 +86,10 @@ router.get('/:id', async (req: AuthRequest, res, next) => {
 
 router.patch('/:id', async (req: AuthRequest, res, next) => {
   try {
+    const data = clientSchema.partial().parse(req.body);
     const client = await prisma.client.updateMany({
       where: { id: req.params.id, organizationId: req.user!.organizationId },
-      data: req.body,
+      data,
     });
     res.json({ message: 'Client updated.', updated: client.count });
   } catch (e) { next(e); }

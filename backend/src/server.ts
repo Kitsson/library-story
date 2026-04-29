@@ -26,6 +26,7 @@ import { emailSettingsRouter } from './routes/emailSettings';
 import { errorHandler } from './middleware/errorHandler';
 import { requestValidator } from './middleware/requestValidator';
 import { logger } from './utils/logger';
+import { startScheduler } from './scheduler';
 
 dotenv.config();
 
@@ -96,6 +97,14 @@ const authRateLimiter = rateLimit({
 });
 app.use('/api/v1/auth/login', authRateLimiter);
 app.use('/api/v1/auth/register', authRateLimiter);
+
+// Rate limit for public portal upload — prevents token brute-force
+const portalRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
+  message: { error: 'Too many upload attempts. Please try again later.' },
+});
+app.use('/api/v1/uploads/portal', portalRateLimiter);
 
 // Logging
 app.use(morgan('combined', {
@@ -179,6 +188,7 @@ app.listen(PORT, () => {
   logger.info(`🚀 KLARY Server running on port ${PORT}`);
   logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   logger.info(`🔒 CORS origin: ${corsOrigin}`);
+  startScheduler();
 });
 
 export { app };

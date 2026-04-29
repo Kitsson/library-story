@@ -24,7 +24,9 @@ router.get('/', async (req: AuthRequest, res, next) => {
   try {
     const { clientId, startDate, endDate, category, page = '1', limit = '50' } = req.query;
     const orgId = req.user!.organizationId!;
-    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+    const pageNum = Math.max(1, parseInt(page as string) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 50));
+    const skip = (pageNum - 1) * limitNum;
 
     const where: any = {
       user: { organizationId: orgId },
@@ -39,7 +41,7 @@ router.get('/', async (req: AuthRequest, res, next) => {
 
     const [entries, total] = await Promise.all([
       prisma.timeEntry.findMany({
-        where, skip, take: parseInt(limit as string),
+        where, skip, take: limitNum,
         orderBy: { startedAt: 'desc' },
         include: { client: { select: { id: true, name: true } } },
       }),

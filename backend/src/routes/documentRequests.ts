@@ -29,7 +29,9 @@ router.get('/', async (req: AuthRequest, res, next) => {
   try {
     const { status, clientId, page = '1', limit = '50' } = req.query;
     const orgId = req.user!.organizationId!;
-    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+    const pageNum = Math.max(1, parseInt(page as string) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 50));
+    const skip = (pageNum - 1) * limitNum;
 
     const where: any = { organizationId: orgId };
     if (status) where.status = status as string;
@@ -37,7 +39,7 @@ router.get('/', async (req: AuthRequest, res, next) => {
 
     const [requests, total] = await Promise.all([
       prisma.documentRequest.findMany({
-        where, skip, take: parseInt(limit as string),
+        where, skip, take: limitNum,
         orderBy: { createdAt: 'desc' },
         include: { client: { select: { id: true, name: true, phone: true, email: true } } },
       }),
@@ -83,13 +85,10 @@ router.post('/', async (req: AuthRequest, res, next) => {
       include: { client: { select: { id: true, name: true, phone: true, email: true } } },
     });
 
-    // Auto-send if SMS channel (Twilio placeholder)
+    // SMS channel is not yet implemented — reject early so accountants are not misled
     if (data.channel === 'sms') {
-      await prisma.documentRequest.update({
-        where: { id: request.id },
-        data: { status: 'SENT', sentAt: new Date() },
-      });
-      logger.info(`Document request marked sent via SMS to ${client.name}`);
+      await prisma.documentRequest.deleteMany({ where: { id: request.id } });
+      return res.status(400).json({ error: 'SMS channel is not yet available. Please use the email or portal channel.' });
     }
 
     // Send email if email channel

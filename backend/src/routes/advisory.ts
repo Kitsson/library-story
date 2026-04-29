@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../utils/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
-import { OpenAIService } from '../services/openai';
+import { OpenAIService } from '../services/ai';
 
 const router = Router();
 router.use(authenticate);
@@ -12,7 +12,9 @@ router.get('/opportunities', async (req: AuthRequest, res, next) => {
   try {
     const { status, priority, page = '1', limit = '50' } = req.query;
     const orgId = req.user!.organizationId!;
-    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+    const pageNum = Math.max(1, parseInt(page as string) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 50));
+    const skip = (pageNum - 1) * limitNum;
 
     const where: any = { client: { organizationId: orgId } };
     if (status) where.status = status as string;
@@ -20,7 +22,7 @@ router.get('/opportunities', async (req: AuthRequest, res, next) => {
 
     const [opportunities, total] = await Promise.all([
       prisma.advisoryOpportunity.findMany({
-        where, skip, take: parseInt(limit as string),
+        where, skip, take: limitNum,
         orderBy: { detectedAt: 'desc' },
         include: { client: { select: { id: true, name: true, industry: true } },
           user: { select: { id: true, firstName: true, lastName: true } } },
