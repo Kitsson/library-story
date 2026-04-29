@@ -19,7 +19,7 @@ export function TransactionsPage() {
   });
 
   const seedMutation = useMutation(() => transactionApi.seedDemo(), {
-    onSuccess: (res) => {
+    onSuccess: (res: any) => {
       queryClient.invalidateQueries('transactions');
       setFilter('UNCATEGORIZED');
       toast.success(res.data.message);
