@@ -63,10 +63,20 @@ app.use(helmet({
   },
 }));
 
-// CORS: Restrict to known origins
-const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
+// CORS: Accept comma-separated origins + all *.vercel.app preview URLs
+const corsAllowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+  .split(',').map(s => s.trim()).filter(Boolean);
+
 app.use(cors({
-  origin: corsOrigin,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (server-to-server, curl, mobile apps)
+    if (!origin) return callback(null, true);
+    // Allow any Vercel deployment (covers all preview + production branch URLs)
+    if (origin.endsWith('.vercel.app')) return callback(null, true);
+    // Allow explicitly configured origins
+    if (corsAllowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS: origin ${origin} not allowed`));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
