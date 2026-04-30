@@ -17,7 +17,7 @@ function formatElapsed(startedAt: number): string {
 }
 
 export function TimerWidget() {
-  const { running, startedAt, clientId, clientName, category, start, stop, reset } = useTimerStore();
+  const { running, startedAt, clientName, category, start, stop, reset } = useTimerStore();
   const [elapsed, setElapsed] = useState('00:00');
   const [expanded, setExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -25,8 +25,6 @@ export function TimerWidget() {
   // Form state for starting a new timer
   const [selClientId, setSelClientId] = useState('');
   const [selCategory, setSelCategory] = useState('bookkeeping');
-  const [description, setDescription] = useState('');
-
   // Post-stop state
   const [pendingEntry, setPendingEntry] = useState<{ durationSeconds: number; clientId: string | null; clientName: string | null; category: string } | null>(null);
   const [postDesc, setPostDesc] = useState('');

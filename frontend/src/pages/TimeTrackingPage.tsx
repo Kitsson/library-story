@@ -2,14 +2,12 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { Plus, Zap, Trash2 } from 'lucide-react';
 import { timeApi, clientApi } from '@/services/api';
-import { useTimerStore } from '@/store/timerStore';
 import toast from 'react-hot-toast';
 
 export function TimeTrackingPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ description: '', category: 'bookkeeping', duration: 30, billable: true, clientId: '' });
   const queryClient = useQueryClient();
-  const { start } = useTimerStore();
 
   const { data: entries } = useQuery('time-entries', () => timeApi.list().then(r => r.data));
   const { data: weekly } = useQuery('time-weekly', () => timeApi.weekly().then(r => r.data));
@@ -37,12 +35,6 @@ export function TimeTrackingPage() {
   const cats = ['bookkeeping', 'advisory', 'compliance', 'admin', 'meeting', 'other'];
   const allEntries: any[] = entries?.entries || [];
   const autoTracked = allEntries.filter(e => e.type === 'AUTO_TRACKED');
-  const manual = allEntries.filter(e => e.type !== 'AUTO_TRACKED');
-
-  function startTimerForCategory(category: string) {
-    start(form.clientId || null, clients?.clients?.find((c: any) => c.id === form.clientId)?.name || null, category);
-    toast('Timer started!', { icon: '⏱' });
-  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">

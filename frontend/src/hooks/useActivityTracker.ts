@@ -4,7 +4,7 @@ import { timeApi } from '@/services/api';
 const MIN_SECONDS = 180; // 3 minutes minimum to create an entry
 const IDLE_TIMEOUT = 120_000; // 2 min no activity = pause tracking
 
-export function useActivityTracker(category: string, clientId?: string, clientName?: string) {
+export function useActivityTracker(category: string, clientId?: string) {
   const activeTimeRef = useRef(0);
   const lastActivityRef = useRef(Date.now());
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
