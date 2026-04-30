@@ -580,6 +580,8 @@ model ComplianceDeadline {
   clientId   String   @map("client_id")
   client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
+  reminderSentAt DateTime? @map("reminder_sent_at")
+
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 

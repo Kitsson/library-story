@@ -154,3 +154,128 @@ export async function sendUploadNotificationEmail(cfg: SmtpConfig, params: {
 
   logger.info(`Upload notification sent to ${params.accountantEmail}`);
 }
+
+const TYPE_LABELS: Record<string, string> = {
+  MOMS_Q: 'Momsredovisning (kvartal)',
+  MOMS_M: 'Momsredovisning (månads)',
+  ARBETSGIVAR: 'Arbetsgivardeklaration',
+  INKOMST: 'Inkomstdeklaration',
+  ARSREDOVISNING: 'Årsredovisning',
+  CUSTOM: 'Övrigt',
+};
+
+export async function sendComplianceDueSoonEmail(cfg: SmtpConfig, params: {
+  adminEmail: string;
+  adminName: string;
+  firmName: string;
+  deadlines: Array<{ clientName: string; type: string; dueDate: Date }>;
+  appUrl: string;
+}): Promise<void> {
+  const rows = params.deadlines.map(d => {
+    const due = d.dueDate.toLocaleDateString('sv-SE');
+    const label = TYPE_LABELS[d.type] || d.type;
+    const daysLeft = Math.ceil((d.dueDate.getTime() - Date.now()) / 86400000);
+    const urgency = daysLeft <= 7 ? '#dc2626' : '#d97706';
+    return `<tr>
+      <td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;font-size:14px;color:#111827;">${d.clientName}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;font-size:14px;color:#374151;">${label}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;font-size:14px;font-weight:600;color:${urgency};">${due}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;color:${urgency};">${daysLeft} dagar kvar</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+    <div style="background:#f59e0b;padding:28px 32px;">
+      <h1 style="margin:0;color:#fff;font-size:20px;font-weight:700;">⏰ Compliance-påminnelse</h1>
+      <p style="margin:6px 0 0;color:#fef3c7;font-size:14px;">${params.firmName} · KLARY</p>
+    </div>
+    <div style="padding:32px;">
+      <p style="color:#111827;font-size:15px;margin-top:0;">Hej ${params.adminName},</p>
+      <p style="color:#374151;font-size:15px;">Du har <strong>${params.deadlines.length} deadline${params.deadlines.length > 1 ? 's' : ''}</strong> som förfaller inom 14 dagar:</p>
+      <table style="width:100%;border-collapse:collapse;margin:20px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+        <thead>
+          <tr style="background:#f9fafb;">
+            <th style="padding:10px 12px;text-align:left;font-size:12px;color:#6b7280;font-weight:600;border-bottom:2px solid #e5e7eb;">KUND</th>
+            <th style="padding:10px 12px;text-align:left;font-size:12px;color:#6b7280;font-weight:600;border-bottom:2px solid #e5e7eb;">TYP</th>
+            <th style="padding:10px 12px;text-align:left;font-size:12px;color:#6b7280;font-weight:600;border-bottom:2px solid #e5e7eb;">FÖRFALLER</th>
+            <th style="padding:10px 12px;text-align:left;font-size:12px;color:#6b7280;font-weight:600;border-bottom:2px solid #e5e7eb;">ÅTERSTÅR</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div style="text-align:center;margin:28px 0;">
+        <a href="${params.appUrl}/compliance" style="display:inline-block;background:#0ea5e9;color:#fff;text-decoration:none;padding:13px 28px;border-radius:8px;font-weight:600;font-size:14px;">Öppna Compliance Calendar</a>
+      </div>
+    </div>
+    <div style="padding:16px 32px;background:#f9fafb;border-top:1px solid #f0f0f0;">
+      <p style="margin:0;color:#9ca3af;font-size:12px;">${params.firmName} · KLARY — The AI copilot for Swedish accounting firms</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  await sendHtml(cfg, params.adminEmail, params.adminName,
+    `⏰ ${params.deadlines.length} compliance-deadline${params.deadlines.length > 1 ? 's' : ''} förfaller inom 14 dagar`, html);
+
+  logger.info(`Compliance due-soon email sent to ${params.adminEmail} (${params.deadlines.length} deadlines)`);
+}
+
+export async function sendIxbrlReminderEmail(cfg: SmtpConfig, params: {
+  adminEmail: string;
+  adminName: string;
+  firmName: string;
+  clientName: string;
+  dueDate: Date;
+  daysUntilDue: number;
+  appUrl: string;
+}): Promise<void> {
+  const dueStr = params.dueDate.toLocaleDateString('sv-SE');
+  const urgencyColor = params.daysUntilDue <= 14 ? '#dc2626' : '#d97706';
+
+  const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:540px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+    <div style="background:#6366f1;padding:28px 32px;">
+      <h1 style="margin:0;color:#fff;font-size:20px;font-weight:700;">📄 iXBRL Påminnelse — Årsredovisning</h1>
+      <p style="margin:6px 0 0;color:#e0e7ff;font-size:14px;">${params.firmName} · KLARY</p>
+    </div>
+    <div style="padding:32px;">
+      <p style="color:#111827;font-size:15px;margin-top:0;">Hej ${params.adminName},</p>
+      <p style="color:#374151;font-size:15px;">Årsredovisningen för <strong>${params.clientName}</strong> ska lämnas in till Bolagsverket i digitalt iXBRL-format.</p>
+      <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;padding:20px;margin:24px 0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:13px;color:#6b7280;font-weight:600;">KUND</span>
+          <span style="font-size:15px;color:#111827;font-weight:700;">${params.clientName}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:13px;color:#6b7280;font-weight:600;">FÖRFALLER</span>
+          <span style="font-size:15px;font-weight:700;color:${urgencyColor};">${dueStr}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:13px;color:#6b7280;font-weight:600;">ÅTERSTÅR</span>
+          <span style="font-size:15px;font-weight:700;color:${urgencyColor};">${params.daysUntilDue} dagar</span>
+        </div>
+      </div>
+      <p style="color:#6b7280;font-size:13px;">Från 2026 krävs digital inlämning i iXBRL-format via Bolagsverkets e-tjänst. Använd SIE-kompatibel bokföringsprogramvara för att generera filen.</p>
+      <div style="text-align:center;margin:28px 0;">
+        <a href="${params.appUrl}/compliance" style="display:inline-block;background:#6366f1;color:#fff;text-decoration:none;padding:13px 28px;border-radius:8px;font-weight:600;font-size:14px;">Markera som inlämnad i KLARY</a>
+      </div>
+    </div>
+    <div style="padding:16px 32px;background:#f9fafb;border-top:1px solid #f0f0f0;">
+      <p style="margin:0;color:#9ca3af;font-size:12px;">${params.firmName} · KLARY — The AI copilot for Swedish accounting firms</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  await sendHtml(cfg, params.adminEmail, params.adminName,
+    `📄 iXBRL-påminnelse: ${params.clientName} årsredovisning om ${params.daysUntilDue} dagar (${dueStr})`, html);
+
+  logger.info(`iXBRL reminder sent to ${params.adminEmail} for client ${params.clientName}`);
+}
