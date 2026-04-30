@@ -279,3 +279,41 @@ export async function sendIxbrlReminderEmail(cfg: SmtpConfig, params: {
 
   logger.info(`iXBRL reminder sent to ${params.adminEmail} for client ${params.clientName}`);
 }
+
+export async function sendInviteEmail(cfg: SmtpConfig, params: {
+  inviteeEmail: string;
+  inviterName: string;
+  firmName: string;
+  role: string;
+  inviteUrl: string;
+}): Promise<void> {
+  const roleLabel: Record<string, string> = { MANAGER: 'Manager', VIEWER: 'Viewer', USER: 'User' };
+  const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:520px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+    <div style="background:#0ea5e9;padding:28px 32px;">
+      <h1 style="margin:0;color:#fff;font-size:20px;font-weight:700;">You've been invited to KLARY</h1>
+      <p style="margin:6px 0 0;color:#bae6fd;font-size:14px;">${params.firmName}</p>
+    </div>
+    <div style="padding:32px;">
+      <p style="color:#111827;font-size:15px;margin-top:0;"><strong>${params.inviterName}</strong> has invited you to join <strong>${params.firmName}</strong> on KLARY as a <strong>${roleLabel[params.role] || params.role}</strong>.</p>
+      <p style="color:#374151;font-size:14px;">Click the button below to create your account. The link expires in 48 hours.</p>
+      <div style="text-align:center;margin:28px 0;">
+        <a href="${params.inviteUrl}" style="display:inline-block;background:#0ea5e9;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:15px;">Accept Invitation</a>
+      </div>
+      <p style="color:#9ca3af;font-size:12px;">Or copy this link: <a href="${params.inviteUrl}" style="color:#0ea5e9;">${params.inviteUrl}</a></p>
+    </div>
+    <div style="padding:16px 32px;background:#f9fafb;border-top:1px solid #f0f0f0;">
+      <p style="margin:0;color:#9ca3af;font-size:12px;">${params.firmName} · KLARY — The AI copilot for Swedish accounting firms</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  await sendHtml(cfg, params.inviteeEmail, params.inviteeEmail,
+    `${params.inviterName} invited you to join ${params.firmName} on KLARY`, html);
+
+  logger.info(`Invite email sent to ${params.inviteeEmail}`);
+}

@@ -1,16 +1,27 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from 'react-query';
 import { api } from '@/services/api';
-import { Upload, CheckCircle, FileText, AlertCircle, Loader } from 'lucide-react';
+import { Upload, CheckCircle, FileText, AlertCircle, Loader, Camera, WifiOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export function PortalUploadPage() {
   const { token } = useParams<{ token: string }>();
   const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [sessionUploads, setSessionUploads] = useState<string[]>([]);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const goOnline = () => setIsOffline(false);
+    const goOffline = () => setIsOffline(true);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => { window.removeEventListener('online', goOnline); window.removeEventListener('offline', goOffline); };
+  }, []);
 
   const { data, isLoading, error } = useQuery(
     ['portal', token],
@@ -24,25 +35,30 @@ export function PortalUploadPage() {
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
+    if (isOffline) { toast.error('You are offline. Please reconnect and try again.'); return; }
     setUploading(true);
 
     for (const file of Array.from(files)) {
       const formData = new FormData();
       formData.append('file', file);
+      setUploadProgress(0);
 
       try {
         await api.post(`/uploads/portal/${token}`, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: (e) => {
+            if (e.total) setUploadProgress(Math.round((e.loaded / e.total) * 100));
+          },
         });
         setSessionUploads(prev => [...prev, file.name]);
         toast.success(`${file.name} uploaded`);
-        // Refresh items to reflect updated upload status
         queryClient.invalidateQueries(['portal', token]);
       } catch (e: any) {
         toast.error(e.response?.data?.error || `Failed to upload ${file.name}`);
       }
     }
 
+    setUploadProgress(0);
     setUploading(false);
   }
 
@@ -69,6 +85,14 @@ export function PortalUploadPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Offline banner */}
+      {isOffline && (
+        <div className="bg-amber-500 text-white text-sm font-medium text-center py-2.5 px-4 flex items-center justify-center gap-2">
+          <WifiOff className="w-4 h-4 shrink-0" />
+          You're offline — uploads will fail until you reconnect.
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-klary-600 text-white py-6 px-4">
         <div className="max-w-lg mx-auto">
@@ -100,7 +124,7 @@ export function PortalUploadPage() {
             </div>
             <ul className="divide-y divide-gray-50">
               {items.map((item, i) => (
-                <li key={i} className="flex items-center gap-3 px-5 py-3">
+                <li key={i} className="flex items-center gap-3 px-5 py-4">
                   {item.uploaded ? (
                     <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />
                   ) : (
@@ -130,35 +154,72 @@ export function PortalUploadPage() {
           </div>
         )}
 
-        {/* Upload area — shown even when some done, hidden only when ALL required done */}
+        {/* Upload area */}
         {!allRequiredDone && (
-          <div
-            className="bg-white rounded-xl shadow-sm border-2 border-dashed border-gray-200 p-8 text-center cursor-pointer hover:border-klary-400 hover:bg-klary-50 transition-colors"
-            onClick={() => !uploading && inputRef.current?.click()}
-            onDragOver={e => e.preventDefault()}
-            onDrop={e => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
-          >
-            {uploading ? (
-              <Loader className="w-10 h-10 animate-spin text-klary-400 mx-auto mb-3" />
-            ) : (
-              <Upload className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+          <div className="space-y-3">
+            {/* Progress bar */}
+            {uploading && (
+              <div className="bg-white rounded-xl shadow-sm p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-700">Uploading…</span>
+                  <span className="text-sm text-klary-600 font-medium">{uploadProgress}%</span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-2">
+                  <div
+                    className="bg-klary-500 h-2 rounded-full transition-all duration-200"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              </div>
             )}
-            <p className="text-gray-700 font-medium mb-1">
-              {uploading ? 'Uploading…' : pendingItems.length > 0
-                ? `Upload ${pendingItems[0].name}`
-                : 'Upload documents'}
-            </p>
-            <p className="text-xs text-gray-400">PDF, images, Word, Excel — max 10MB each</p>
-            {pendingItems.length > 1 && (
-              <p className="text-xs text-klary-500 mt-2">
-                {pendingItems.length} documents still needed — upload one at a time or select multiple
+
+            {/* Drop zone */}
+            <div
+              className="bg-white rounded-xl shadow-sm border-2 border-dashed border-gray-200 p-8 text-center cursor-pointer hover:border-klary-400 hover:bg-klary-50 transition-colors active:bg-klary-100"
+              onClick={() => !uploading && inputRef.current?.click()}
+              onDragOver={e => e.preventDefault()}
+              onDrop={e => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
+            >
+              {uploading ? (
+                <Loader className="w-10 h-10 animate-spin text-klary-400 mx-auto mb-3" />
+              ) : (
+                <Upload className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+              )}
+              <p className="text-gray-700 font-medium mb-1">
+                {uploading ? 'Uploading…' : pendingItems.length > 0
+                  ? `Upload ${pendingItems[0].name}`
+                  : 'Upload documents'}
               </p>
-            )}
+              <p className="text-xs text-gray-400">PDF, images, Word, Excel — max 10MB each</p>
+              {pendingItems.length > 1 && (
+                <p className="text-xs text-klary-500 mt-2">
+                  {pendingItems.length} documents still needed
+                </p>
+              )}
+              <input
+                ref={inputRef}
+                type="file"
+                multiple
+                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                className="hidden"
+                onChange={e => handleFiles(e.target.files)}
+              />
+            </div>
+
+            {/* Camera button — visible on mobile */}
+            <button
+              className="w-full flex items-center justify-center gap-2 bg-white border border-gray-200 rounded-xl py-4 text-sm font-medium text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors shadow-sm"
+              onClick={() => !uploading && cameraRef.current?.click()}
+              disabled={uploading}
+            >
+              <Camera className="w-5 h-5 text-gray-500" />
+              Take a photo with your camera
+            </button>
             <input
-              ref={inputRef}
+              ref={cameraRef}
               type="file"
-              multiple
-              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+              accept="image/*"
+              capture="environment"
               className="hidden"
               onChange={e => handleFiles(e.target.files)}
             />

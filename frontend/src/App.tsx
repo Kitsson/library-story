@@ -14,6 +14,7 @@ import { IntegrationsPage } from '@/pages/IntegrationsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { PortalUploadPage } from '@/pages/PortalUploadPage';
 import { CompliancePage } from '@/pages/CompliancePage';
+import { AcceptInvitePage } from '@/pages/AcceptInvitePage';
 
 function App() {
   const { isLoading, isAuthenticated, loadUser } = useAuth();
@@ -31,6 +32,7 @@ function App() {
   return (
     <Routes>
       <Route path="/portal/upload/:token" element={<PortalUploadPage />} />
+      <Route path="/accept-invite" element={<AcceptInvitePage />} />
       <Route path="/login" element={!isAuthenticated ? <LoginPage /> : <Navigate to="/" />} />
       <Route path="/register" element={!isAuthenticated ? <RegisterPage /> : <Navigate to="/" />} />
       <Route element={isAuthenticated ? <Layout /> : <Navigate to="/login" />}>

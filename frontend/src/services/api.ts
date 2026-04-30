@@ -111,3 +111,17 @@ export const kycApi = {
   get: (clientId: string) => api.get(`/kyc/${clientId}`),
   update: (clientId: string, data: any) => api.patch(`/kyc/${clientId}`, data),
 };
+
+// Users / Team
+export const userApi = {
+  list: () => api.get('/users'),
+  invite: (data: { email: string; role: string }) => api.post('/users/invite', data),
+  remove: (id: string) => api.delete(`/users/${id}`),
+  update: (id: string, data: any) => api.patch(`/users/${id}`, data),
+};
+
+// Auth extras
+export const authExtrasApi = {
+  acceptInvite: (data: { token: string; firstName: string; lastName: string; password: string }) =>
+    api.post('/auth/accept-invite', data),
+};

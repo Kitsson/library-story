@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { useAuth } from '@/hooks/useAuth';
-import { emailSettingsApi } from '@/services/api';
-import { Building2, Shield, Users, CreditCard, Mail, CheckCircle, AlertCircle, MessageSquare } from 'lucide-react';
+import { emailSettingsApi, userApi } from '@/services/api';
+import { Building2, Shield, Users, CreditCard, Mail, CheckCircle, AlertCircle, MessageSquare, Copy, Trash2, UserPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const SMTP_PRESETS: Record<string, { host: string; port: number; secure: boolean; label: string }> = {
@@ -271,12 +271,127 @@ export function SettingsPage() {
       </div>
 
       {/* Team */}
-      <div className="card">
-        <div className="card-header">
-          <div className="flex items-center gap-2"><Users className="w-5 h-5 text-klary-600" /><h3 className="font-semibold text-gray-900">Team</h3></div>
+      <TeamPanel currentUser={user} />
+    </div>
+  );
+}
+
+function TeamPanel({ currentUser }: { currentUser: any }) {
+  const queryClient = useQueryClient();
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'MANAGER' | 'USER' | 'VIEWER'>('USER');
+  const [inviteUrl, setInviteUrl] = useState('');
+
+  const { data } = useQuery('team-users', () => userApi.list().then(r => r.data));
+  const users: any[] = data?.users || [];
+
+  const inviteMutation = useMutation(
+    () => userApi.invite({ email: inviteEmail, role: inviteRole }),
+    {
+      onSuccess: (r) => {
+        setInviteUrl(r.data.inviteUrl);
+        setInviteEmail('');
+        toast.success(r.data.emailSent ? 'Invitation email sent!' : 'Invite link created — copy and share it.');
+        queryClient.invalidateQueries('team-users');
+      },
+      onError: (e: any) => { toast.error(e.response?.data?.error || 'Failed to invite user'); },
+    }
+  );
+
+  const removeMutation = useMutation(
+    (id: string) => userApi.remove(id),
+    {
+      onSuccess: () => {
+        toast.success('User removed from organization.');
+        queryClient.invalidateQueries('team-users');
+      },
+      onError: (e: any) => { toast.error(e.response?.data?.error || 'Failed to remove user'); },
+    }
+  );
+
+  const roleColors: Record<string, string> = {
+    ADMIN: 'badge-red',
+    MANAGER: 'badge-blue',
+    USER: 'badge-green',
+    VIEWER: 'badge-yellow',
+  };
+
+  return (
+    <div className="card">
+      <div className="card-header">
+        <div className="flex items-center gap-2"><Users className="w-5 h-5 text-klary-600" /><h3 className="font-semibold text-gray-900">Team</h3></div>
+        <p className="text-sm text-gray-500 mt-1">Invite colleagues to join your organization.</p>
+      </div>
+      <div className="card-body space-y-6">
+        {/* Invite form */}
+        <div className="space-y-3">
+          <h4 className="text-sm font-medium text-gray-700 flex items-center gap-1.5"><UserPlus className="w-4 h-4" /> Invite a colleague</h4>
+          <div className="flex gap-2">
+            <input
+              className="input flex-1"
+              type="email"
+              placeholder="colleague@firm.com"
+              value={inviteEmail}
+              onChange={e => setInviteEmail(e.target.value)}
+            />
+            <select
+              className="input w-32"
+              value={inviteRole}
+              onChange={e => setInviteRole(e.target.value as any)}
+            >
+              <option value="MANAGER">Manager</option>
+              <option value="USER">User</option>
+              <option value="VIEWER">Viewer</option>
+            </select>
+            <button
+              className="btn-primary whitespace-nowrap"
+              disabled={!inviteEmail || inviteMutation.isLoading}
+              onClick={() => inviteMutation.mutate()}
+            >
+              {inviteMutation.isLoading ? 'Sending…' : 'Send invite'}
+            </button>
+          </div>
+          {inviteUrl && (
+            <div className="flex items-center gap-2 bg-klary-50 border border-klary-200 rounded-lg px-3 py-2">
+              <span className="text-xs text-klary-700 font-mono truncate flex-1">{inviteUrl}</span>
+              <button
+                className="shrink-0 text-klary-600 hover:text-klary-800"
+                onClick={() => { navigator.clipboard.writeText(inviteUrl); toast.success('Copied!'); }}
+                title="Copy link"
+              >
+                <Copy className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
-        <div className="card-body">
-          <p className="text-sm text-gray-500">Team management available in KlarPro and KlarFirm plans.</p>
+
+        {/* User list */}
+        <div className="space-y-1">
+          {users.map(u => (
+            <div key={u.id} className="flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0">
+              <div className="w-8 h-8 rounded-full bg-klary-100 flex items-center justify-center text-klary-700 font-semibold text-sm shrink-0">
+                {u.firstName?.[0]}{u.lastName?.[0]}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">{u.firstName} {u.lastName}</p>
+                <p className="text-xs text-gray-400 truncate">{u.email}</p>
+              </div>
+              <span className={`badge text-xs shrink-0 ${roleColors[u.role] || 'badge-gray'}`}>{u.role}</span>
+              <span className={`w-2 h-2 rounded-full shrink-0 ${u.status === 'ACTIVE' ? 'bg-emerald-400' : 'bg-gray-300'}`} title={u.status} />
+              {u.id !== currentUser?.id && (
+                <button
+                  className="text-gray-300 hover:text-red-500 transition-colors shrink-0"
+                  onClick={() => { if (confirm(`Remove ${u.firstName} ${u.lastName} from the team?`)) removeMutation.mutate(u.id); }}
+                  title="Remove user"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          ))}
+          {users.length === 0 && (
+            <p className="text-sm text-gray-400 py-4 text-center">No team members yet.</p>
+          )}
         </div>
       </div>
     </div>

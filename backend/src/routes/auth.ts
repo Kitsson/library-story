@@ -309,4 +309,70 @@ router.get('/me', async (req, res, next) => {
   }
 });
 
+/**
+ * POST /api/v1/auth/accept-invite
+ * Accept a team invite JWT and create the user account
+ */
+router.post('/accept-invite', async (req, res, next) => {
+  try {
+    const schema = z.object({
+      token: z.string().min(1),
+      firstName: z.string().min(1),
+      lastName: z.string().min(1),
+      password: z.string().min(12, 'Password must be at least 12 characters'),
+    });
+    const { token, firstName, lastName, password } = schema.parse(req.body);
+
+    let payload: any;
+    try {
+      payload = jwt.verify(token, JWT_SECRET as string);
+    } catch {
+      return res.status(400).json({ error: 'Invalid or expired invite link. Please ask for a new invite.' });
+    }
+
+    if (payload.type !== 'invite') {
+      return res.status(400).json({ error: 'Invalid invite token.' });
+    }
+
+    const existing = await prisma.user.findUnique({ where: { email: payload.email } });
+    if (existing) {
+      return res.status(409).json({ error: 'An account already exists for this email. Please log in instead.' });
+    }
+
+    const org = await prisma.organization.findUnique({ where: { id: payload.orgId } });
+    if (!org) return res.status(404).json({ error: 'Organization not found.' });
+
+    const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    const user = await prisma.user.create({
+      data: {
+        email: payload.email,
+        passwordHash,
+        firstName,
+        lastName,
+        role: payload.role,
+        organizationId: payload.orgId,
+        status: 'ACTIVE',
+      },
+    });
+
+    const { accessToken, refreshToken } = generateTokens(user.id);
+    logger.info(`Invite accepted: ${user.email} joined org ${payload.orgId}`);
+
+    res.status(201).json({
+      message: 'Account created successfully.',
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        organizationId: user.organizationId,
+      },
+      organization: { id: org.id, name: org.name, tier: org.tier },
+    });
+  } catch (e) { next(e); }
+});
+
 export { router as authRouter };
