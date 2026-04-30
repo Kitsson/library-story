@@ -11,22 +11,23 @@
     "test": "vitest"
   },
   "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.22.3",
-    "react-query": "^3.39.3",
     "axios": "^1.6.8",
-    "zustand": "^4.5.2",
+    "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
     "lucide-react": "^0.363.0",
-    "recharts": "^2.12.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "react-hot-toast": "^2.4.1",
-    "clsx": "^2.1.1",
-    "tailwind-merge": "^2.2.2"
+    "react-query": "^3.39.3",
+    "react-router-dom": "^6.22.3",
+    "recharts": "^2.12.3",
+    "tailwind-merge": "^2.2.2",
+    "zustand": "^4.5.2"
   },
   "devDependencies": {
     "@types/react": "^18.2.67",
     "@types/react-dom": "^18.2.22",
+    "@vercel/node": "^5.7.13",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.19",
     "eslint": "^8.57.0",
