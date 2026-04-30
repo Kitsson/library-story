@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { Calendar, RefreshCw, Check, AlertTriangle, Clock, FileText } from 'lucide-react';
 import { complianceApi, clientApi } from '@/services/api';
+import { useActivityTracker } from '@/hooks/useActivityTracker';
 import toast from 'react-hot-toast';
 
 const TYPE_LABELS: Record<string, string> = {
@@ -21,6 +22,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }>
 };
 
 export function CompliancePage() {
+  useActivityTracker('compliance');
   const queryClient = useQueryClient();
   const [filterStatus, setFilterStatus] = useState('');
   const [filterClient, setFilterClient] = useState('');

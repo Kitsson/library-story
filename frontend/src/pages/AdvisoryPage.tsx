@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { Lightbulb, TrendingUp, CircleDollarSign, Target, ChevronDown, ChevronUp } from 'lucide-react';
 import { advisoryApi } from '@/services/api';
+import { useActivityTracker } from '@/hooks/useActivityTracker';
 
 export function AdvisoryPage() {
+  useActivityTracker('advisory');
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState<string | null>(null);
   const { data: dashboard } = useQuery('advisory-dashboard', () => advisoryApi.dashboard().then(r => r.data));

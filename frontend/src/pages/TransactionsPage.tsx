@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { Sparkles, Check, Download, Database, Info } from 'lucide-react';
 import { transactionApi, dashboardApi } from '@/services/api';
+import { useActivityTracker } from '@/hooks/useActivityTracker';
 import toast from 'react-hot-toast';
 
 export function TransactionsPage() {
+  useActivityTracker('bookkeeping');
   const [filter, setFilter] = useState('UNCATEGORIZED');
   const [tooltip, setTooltip] = useState<string | null>(null);
   const queryClient = useQueryClient();

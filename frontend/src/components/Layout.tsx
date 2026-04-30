@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { TimerWidget } from '@/components/TimerWidget';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -65,6 +66,9 @@ export function Layout() {
             );
           })}
         </nav>
+
+        {/* Timer widget */}
+        <TimerWidget />
 
         {/* User */}
         <div className="border-t border-gray-100 p-4">

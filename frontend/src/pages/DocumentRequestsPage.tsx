@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { Send, FileText, Bell, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { documentApi, clientApi } from '@/services/api';
+import { useActivityTracker } from '@/hooks/useActivityTracker';
 import toast from 'react-hot-toast';
 
 export function DocumentRequestsPage() {
+  useActivityTracker('admin');
   const [showForm, setShowForm] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [form, setForm] = useState({ clientId: '', title: '', description: '', channel: 'sms' as string, dueDate: '', items: [{ name: '', description: '', required: true }] });
