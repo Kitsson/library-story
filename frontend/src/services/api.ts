@@ -125,3 +125,11 @@ export const authExtrasApi = {
   acceptInvite: (data: { token: string; firstName: string; lastName: string; password: string }) =>
     api.post('/auth/accept-invite', data),
 };
+
+// Fortnox integration
+export const fortnoxApi = {
+  status: () => api.get('/fortnox/status'),
+  authorizeUrl: () => api.get('/fortnox/authorize-url'),
+  sync: () => api.post('/fortnox/sync'),
+  disconnect: () => api.delete('/fortnox/disconnect'),
+};
