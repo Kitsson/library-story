@@ -44,6 +44,20 @@ router.get('/', async (req: AuthRequest, res, next) => {
 router.post('/', requireRole('ADMIN', 'MANAGER'), async (req: AuthRequest, res, next) => {
   try {
     const data = createUserSchema.parse(req.body);
+    const orgId = req.user!.organizationId!;
+
+    const org = await prisma.organization.findUnique({
+      where: { id: orgId },
+      include: { _count: { select: { users: { where: { status: { not: 'INACTIVE' } } } } } },
+    });
+    if (!org) return res.status(404).json({ error: 'Organization not found.' });
+    if (org._count.users >= org.maxUsers) {
+      return res.status(403).json({
+        error: `Seat limit reached (${org._count.users}/${org.maxUsers}). Upgrade your plan to add more users.`,
+        code: 'SEAT_LIMIT_REACHED',
+      });
+    }
+
     const passwordHash = await bcrypt.hash(data.password, BCRYPT_ROUNDS);
 
     const user = await prisma.user.create({
@@ -62,6 +76,8 @@ router.post('/', requireRole('ADMIN', 'MANAGER'), async (req: AuthRequest, res, 
   } catch (e) { next(e); }
 });
 
+
+
 // POST /api/v1/users/invite — send email invite with JWT link
 router.post('/invite', requireRole('ADMIN', 'MANAGER'), async (req: AuthRequest, res, next) => {
   try {
@@ -70,6 +86,18 @@ router.post('/invite', requireRole('ADMIN', 'MANAGER'), async (req: AuthRequest,
 
     const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
     if (existing) return res.status(409).json({ error: 'A user with this email already exists.' });
+
+    const orgWithCount = await prisma.organization.findUnique({
+      where: { id: orgId },
+      include: { _count: { select: { users: { where: { status: { not: 'INACTIVE' } } } } } },
+    });
+    if (!orgWithCount) return res.status(404).json({ error: 'Organization not found.' });
+    if (orgWithCount._count.users >= orgWithCount.maxUsers) {
+      return res.status(403).json({
+        error: `Seat limit reached (${orgWithCount._count.users}/${orgWithCount.maxUsers}). Upgrade your plan to invite more users.`,
+        code: 'SEAT_LIMIT_REACHED',
+      });
+    }
 
     const token = jwt.sign(
       { type: 'invite', email: email.toLowerCase(), orgId, role },

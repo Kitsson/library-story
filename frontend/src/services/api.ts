@@ -120,6 +120,12 @@ export const userApi = {
   update: (id: string, data: any) => api.patch(`/users/${id}`, data),
 };
 
+// Billing / Plan management
+export const billingApi = {
+  getStatus: () => api.get('/billing/status'),
+  createCheckout: (tier: string) => api.post('/billing/checkout', { tier }),
+};
+
 // Auth extras
 export const authExtrasApi = {
   acceptInvite: (data: { token: string; firstName: string; lastName: string; password: string }) =>

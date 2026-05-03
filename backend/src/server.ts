@@ -27,6 +27,7 @@ import { emailSettingsRouter } from './routes/emailSettings';
 import { complianceRouter } from './routes/compliance';
 import { kycRouter } from './routes/kyc';
 import { fortnoxRouter } from './routes/fortnox';
+import { billingRouter } from './routes/billing';
 import { errorHandler } from './middleware/errorHandler';
 import { requestValidator } from './middleware/requestValidator';
 import { logger } from './utils/logger';
@@ -153,6 +154,7 @@ app.use('/api/v1/email-settings', emailSettingsRouter);
 app.use('/api/v1/compliance', complianceRouter);
 app.use('/api/v1/kyc', kycRouter);
 app.use('/api/v1/fortnox', fortnoxRouter);
+app.use('/api/v1/billing', billingRouter);
 
 // Client portal (public, no auth required for upload)
 app.use('/portal', express.static(path.join(__dirname, '../public/portal')));

@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { useAuth } from '@/hooks/useAuth';
-import { emailSettingsApi, userApi } from '@/services/api';
-import { Building2, Shield, Users, CreditCard, Mail, CheckCircle, AlertCircle, MessageSquare, Copy, Trash2, UserPlus } from 'lucide-react';
+import { billingApi, emailSettingsApi, userApi } from '@/services/api';
+import { AlertCircle, ArrowUpCircle, Building2, CheckCircle, Copy, CreditCard, Mail, MessageSquare, Shield, Trash2, TrendingUp, UserPlus, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const SMTP_PRESETS: Record<string, { host: string; port: number; secure: boolean; label: string }> = {
@@ -12,11 +12,46 @@ const SMTP_PRESETS: Record<string, { host: string; port: number; secure: boolean
   custom:  { host: '',                    port: 587, secure: true,  label: 'Custom SMTP' },
 };
 
+const TIER_INFO: Record<string, {
+  name: string; price: string; maxUsers: number;
+  features: string[]; highlight?: boolean;
+}> = {
+  KLARSTART: {
+    name: 'KlarStart', price: '795 kr/mo', maxUsers: 3,
+    features: ['3 users', 'AI Categorization (200/mo)', 'Client Portal (10 clients)', 'SMS (50/mo)', 'Auto-Time Tracking'],
+  },
+  KLARPRO: {
+    name: 'KlarPro', price: '1,495 kr/mo', maxUsers: 15, highlight: true,
+    features: ['15 users', 'AI Categorization (unlimited)', 'Client Portal (50 clients)', 'SMS (300/mo)', 'Advisory Engine', 'Proposal Generator'],
+  },
+  KLARFIRM: {
+    name: 'KlarFirm', price: '3,995 kr/mo', maxUsers: 50,
+    features: ['50 users', 'Unlimited everything', 'Team Analytics', 'API Access', 'Priority Support'],
+  },
+};
+
+const TIER_ORDER: Record<string, number> = { KLARSTART: 0, KLARPRO: 1, KLARFIRM: 2 };
+
 export function SettingsPage() {
   const { user, organization } = useAuth();
   const queryClient = useQueryClient();
   const [preset, setPreset] = useState('resend');
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  // Handle Stripe redirect query params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get('payment');
+    if (payment === 'success') {
+      toast.success('Plan upgraded successfully!');
+      queryClient.invalidateQueries('billing-status');
+    } else if (payment === 'cancelled') {
+      toast('Upgrade cancelled.', { icon: 'ℹ️' });
+    }
+    if (payment) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [queryClient]);
 
   const { data: emailData } = useQuery('email-settings', () => emailSettingsApi.get().then(r => r.data));
 
@@ -52,13 +87,7 @@ export function SettingsPage() {
     if (p.host) setForm(f => ({ ...f, smtpHost: p.host, smtpPort: p.port, smtpSecure: p.secure }));
   }
 
-  const tierInfo: Record<string, { name: string; price: string; features: string[] }> = {
-    KLARSTART: { name: 'KlarStart', price: '795 kr/mo', features: ['Auto-Time Tracking', 'Smart Timesheets', 'AI Categorization (200/mo)', 'Client Portal (10 clients)', 'SMS (50/mo)'] },
-    KLARPRO: { name: 'KlarPro', price: '1,495 kr/mo', features: ['Everything in KlarStart', 'AI Categorization (unlimited)', 'Client Portal (50 clients)', 'SMS (300/mo)', 'Advisory Engine', 'Proposal Generator'] },
-    KLARFIRM: { name: 'KlarFirm', price: '3,995 kr/mo', features: ['Everything in KlarPro', 'Unlimited everything', 'Team Analytics', 'API Access', 'Priority Support'] },
-  };
-
-  const current = tierInfo[organization?.tier || 'KLARSTART'];
+  const currentTierInfo = TIER_INFO[organization?.tier || 'KLARSTART'];
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -71,7 +100,7 @@ export function SettingsPage() {
           <div className="grid grid-cols-2 gap-4">
             <div><label className="label">Firm Name</label><p className="text-gray-900 font-medium">{organization?.name || '—'}</p></div>
             <div><label className="label">Organization Number</label><p className="text-gray-900">{user?.organizationId?.slice(0, 8) || '—'}</p></div>
-            <div><label className="label">Current Plan</label><p className="text-klary-700 font-semibold">{current.name} <span className="text-gray-400 font-normal">({current.price})</span></p></div>
+            <div><label className="label">Current Plan</label><p className="text-klary-700 font-semibold">{currentTierInfo.name} <span className="text-gray-400 font-normal">({currentTierInfo.price})</span></p></div>
             <div><label className="label">Your Role</label><p className="text-gray-900 capitalize">{user?.role?.toLowerCase()}</p></div>
           </div>
         </div>
@@ -94,7 +123,6 @@ export function SettingsPage() {
           <p className="text-sm text-gray-500 mt-1">Connect your firm's email to send document requests and receive upload notifications.</p>
         </div>
         <div className="card-body space-y-5">
-          {/* Provider tabs */}
           <div>
             <label className="label mb-2">Email Provider</label>
             <div className="flex gap-2 flex-wrap">
@@ -119,7 +147,6 @@ export function SettingsPage() {
             )}
           </div>
 
-          {/* Resend fields */}
           {preset === 'resend' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
@@ -138,7 +165,6 @@ export function SettingsPage() {
             </div>
           )}
 
-          {/* SMTP fields */}
           {preset !== 'resend' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -187,18 +213,10 @@ export function SettingsPage() {
           )}
 
           <div className="flex gap-3">
-            <button
-              onClick={() => saveMutation.mutate(form)}
-              disabled={saveMutation.isLoading}
-              className="btn-primary"
-            >
+            <button onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isLoading} className="btn-primary">
               {saveMutation.isLoading ? 'Saving…' : 'Save Settings'}
             </button>
-            <button
-              onClick={() => { setTestResult(null); testMutation.mutate(undefined); }}
-              disabled={testMutation.isLoading || !emailData?.configured}
-              className="btn-secondary"
-            >
+            <button onClick={() => { setTestResult(null); testMutation.mutate(undefined); }} disabled={testMutation.isLoading || !emailData?.configured} className="btn-secondary">
               {testMutation.isLoading ? 'Testing…' : 'Test Connection'}
             </button>
           </div>
@@ -213,9 +231,7 @@ export function SettingsPage() {
               <MessageSquare className="w-5 h-5 text-klary-600" />
               <h3 className="font-semibold text-gray-900">SMS Settings</h3>
             </div>
-            <span className="flex items-center gap-1 text-xs text-gray-500 font-medium">
-              Platform-level
-            </span>
+            <span className="flex items-center gap-1 text-xs text-gray-500 font-medium">Platform-level</span>
           </div>
           <p className="text-sm text-gray-500 mt-1">SMS document requests are sent via Twilio, configured at the server level by your administrator.</p>
         </div>
@@ -223,9 +239,7 @@ export function SettingsPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">SMS Quota</label>
-              <p className="text-gray-900 font-medium">
-                {current.features.find(f => f.includes('SMS')) || 'See plan features'}
-              </p>
+              <p className="text-gray-900 font-medium">{currentTierInfo.features.find(f => f.includes('SMS')) || 'See plan features'}</p>
             </div>
             <div>
               <label className="label">Provider</label>
@@ -233,27 +247,13 @@ export function SettingsPage() {
             </div>
           </div>
           <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-600">
-            To send SMS document requests, go to <strong>Documents</strong> → create a new request and select <strong>SMS</strong> as the channel. Clients receive a direct link to upload documents.
+            To send SMS document requests, go to <strong>Documents</strong> → create a new request and select <strong>SMS</strong> as the channel.
           </div>
         </div>
       </div>
 
-      {/* Current Plan */}
-      <div className="card">
-        <div className="card-header">
-          <div className="flex items-center gap-2"><CreditCard className="w-5 h-5 text-klary-600" /><h3 className="font-semibold text-gray-900">Plan Features</h3></div>
-        </div>
-        <div className="card-body">
-          <ul className="space-y-2">
-            {current.features.map((f, i) => (
-              <li key={i} className="flex items-center gap-2 text-sm text-gray-700">
-                <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                {f}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
+      {/* Plan & Billing */}
+      <PlanBillingPanel currentTier={organization?.tier || 'KLARSTART'} userRole={user?.role} />
 
       {/* Security */}
       <div className="card">
@@ -271,19 +271,164 @@ export function SettingsPage() {
       </div>
 
       {/* Team */}
-      <TeamPanel currentUser={user} />
+      <TeamPanel currentUser={user} organization={organization} />
     </div>
   );
 }
 
-function TeamPanel({ currentUser }: { currentUser: any }) {
+// ─── Plan & Billing Panel ──────────────────────────────────────────────────
+
+function UsageBar({ used, max, label }: { used: number; max: number; label: string }) {
+  const isUnlimited = max >= 99999;
+  const pct = isUnlimited ? 0 : Math.min(100, Math.round((used / max) * 100));
+  const color = pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-amber-400' : 'bg-klary-500';
+
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between text-xs text-gray-500">
+        <span>{label}</span>
+        <span className="font-medium text-gray-700">{isUnlimited ? `${used} / Unlimited` : `${used} / ${max}`}</span>
+      </div>
+      {!isUnlimited && (
+        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PlanBillingPanel({ currentTier, userRole }: { currentTier: string; userRole?: string }) {
+  const { data, isLoading } = useQuery('billing-status', () => billingApi.getStatus().then(r => r.data));
+
+  const checkoutMutation = useMutation(
+    (tier: string) => billingApi.createCheckout(tier),
+    {
+      onSuccess: (r) => { window.location.href = r.data.url; },
+      onError: (e: any) => { toast.error(e.response?.data?.error || 'Could not start checkout'); },
+    }
+  );
+
+  const upgradeTiers = Object.entries(TIER_INFO).filter(
+    ([key]) => TIER_ORDER[key] > TIER_ORDER[currentTier]
+  );
+
+  return (
+    <div className="card">
+      <div className="card-header">
+        <div className="flex items-center gap-2">
+          <CreditCard className="w-5 h-5 text-klary-600" />
+          <h3 className="font-semibold text-gray-900">Plan & Billing</h3>
+        </div>
+        <p className="text-sm text-gray-500 mt-1">
+          Current plan: <span className="font-medium text-gray-700">{TIER_INFO[currentTier]?.name}</span>
+          <span className="text-gray-400"> · {TIER_INFO[currentTier]?.price}</span>
+        </p>
+      </div>
+      <div className="card-body space-y-6">
+        {/* Usage stats */}
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="h-4 bg-gray-100 rounded animate-pulse" />
+            ))}
+          </div>
+        ) : data && (
+          <div className="space-y-3">
+            <UsageBar label="Team seats" used={data.currentUsers} max={data.maxUsers} />
+            <UsageBar label="Clients" used={data.currentClients} max={data.maxClients} />
+            <UsageBar label="SMS this month" used={data.smsUsed} max={data.smsQuota} />
+            <UsageBar label="AI calls this month" used={data.aiUsed} max={data.aiQuota} />
+          </div>
+        )}
+
+        {/* Upgrade options */}
+        {upgradeTiers.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-klary-500" />
+              <h4 className="text-sm font-medium text-gray-700">Upgrade your plan</h4>
+            </div>
+            <div className={`grid gap-3 ${upgradeTiers.length > 1 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+              {upgradeTiers.map(([key, info]) => (
+                <div
+                  key={key}
+                  className={`relative rounded-xl border p-4 space-y-3 ${info.highlight ? 'border-klary-400 bg-klary-50' : 'border-gray-200 bg-white'}`}
+                >
+                  {info.highlight && (
+                    <span className="absolute -top-2.5 left-4 bg-klary-600 text-white text-xs font-semibold px-2 py-0.5 rounded-full">Most popular</span>
+                  )}
+                  <div>
+                    <p className="font-semibold text-gray-900">{info.name}</p>
+                    <p className="text-klary-700 font-bold text-lg">{info.price}</p>
+                  </div>
+                  <ul className="space-y-1.5">
+                    {info.features.map((f, i) => (
+                      <li key={i} className="flex items-center gap-2 text-xs text-gray-600">
+                        <svg className="w-3.5 h-3.5 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  {userRole === 'ADMIN' ? (
+                    <button
+                      className={`w-full btn-primary flex items-center justify-center gap-1.5 ${info.highlight ? '' : 'btn-secondary'}`}
+                      disabled={checkoutMutation.isLoading}
+                      onClick={() => checkoutMutation.mutate(key)}
+                    >
+                      <ArrowUpCircle className="w-4 h-4" />
+                      {checkoutMutation.isLoading ? 'Redirecting…' : `Upgrade to ${info.name}`}
+                    </button>
+                  ) : (
+                    <p className="text-xs text-gray-400 text-center">Only admins can upgrade the plan.</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {upgradeTiers.length === 0 && (
+          <div className="flex items-center gap-2 text-sm text-emerald-600 font-medium">
+            <CheckCircle className="w-4 h-4" />
+            You're on the highest plan. Enjoy unlimited access!
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Team Panel ────────────────────────────────────────────────────────────
+
+function TeamPanel({ currentUser, organization }: { currentUser: any; organization: any }) {
   const queryClient = useQueryClient();
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'MANAGER' | 'USER' | 'VIEWER'>('USER');
   const [inviteUrl, setInviteUrl] = useState('');
+  const [seatLimitHit, setSeatLimitHit] = useState(false);
 
   const { data } = useQuery('team-users', () => userApi.list().then(r => r.data));
   const users: any[] = data?.users || [];
+
+  const maxUsers: number = organization?.maxUsers ?? 3;
+  const currentTier: string = organization?.tier ?? 'KLARSTART';
+  const atSeatLimit = users.length >= maxUsers;
+
+  const nextTierEntry = Object.entries(TIER_INFO).find(
+    ([key]) => TIER_ORDER[key] === TIER_ORDER[currentTier] + 1
+  );
+  const nextTierName = nextTierEntry?.[1]?.name;
+
+  const checkoutMutation = useMutation(
+    (tier: string) => billingApi.createCheckout(tier),
+    {
+      onSuccess: (r) => { window.location.href = r.data.url; },
+      onError: (e: any) => { toast.error(e.response?.data?.error || 'Could not start checkout'); },
+    }
+  );
 
   const inviteMutation = useMutation(
     () => userApi.invite({ email: inviteEmail, role: inviteRole }),
@@ -291,10 +436,17 @@ function TeamPanel({ currentUser }: { currentUser: any }) {
       onSuccess: (r) => {
         setInviteUrl(r.data.inviteUrl);
         setInviteEmail('');
+        setSeatLimitHit(false);
         toast.success(r.data.emailSent ? 'Invitation email sent!' : 'Invite link created — copy and share it.');
         queryClient.invalidateQueries('team-users');
       },
-      onError: (e: any) => { toast.error(e.response?.data?.error || 'Failed to invite user'); },
+      onError: (e: any) => {
+        if (e.response?.data?.code === 'SEAT_LIMIT_REACHED') {
+          setSeatLimitHit(true);
+        } else {
+          toast.error(e.response?.data?.error || 'Failed to invite user');
+        }
+      },
     }
   );
 
@@ -310,22 +462,57 @@ function TeamPanel({ currentUser }: { currentUser: any }) {
   );
 
   const roleColors: Record<string, string> = {
-    ADMIN: 'badge-red',
-    MANAGER: 'badge-blue',
-    USER: 'badge-green',
-    VIEWER: 'badge-yellow',
+    ADMIN: 'badge-red', MANAGER: 'badge-blue', USER: 'badge-green', VIEWER: 'badge-yellow',
   };
+
+  const showSeatWarning = atSeatLimit || seatLimitHit;
 
   return (
     <div className="card">
       <div className="card-header">
-        <div className="flex items-center gap-2"><Users className="w-5 h-5 text-klary-600" /><h3 className="font-semibold text-gray-900">Team</h3></div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-klary-600" />
+            <h3 className="font-semibold text-gray-900">Team</h3>
+          </div>
+          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${atSeatLimit ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'}`}>
+            {users.length} / {maxUsers} seats
+          </span>
+        </div>
         <p className="text-sm text-gray-500 mt-1">Invite colleagues to join your organization.</p>
       </div>
       <div className="card-body space-y-6">
+        {/* Seat limit banner */}
+        {showSeatWarning && (
+          <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-amber-800">
+                Seat limit reached ({users.length}/{maxUsers} on {TIER_INFO[currentTier]?.name})
+              </p>
+              {nextTierName && (
+                <p className="text-xs text-amber-700 mt-0.5">
+                  Upgrade to {nextTierName} to add more team members.
+                </p>
+              )}
+            </div>
+            {nextTierEntry && currentUser?.role === 'ADMIN' && (
+              <button
+                className="text-xs font-semibold text-amber-700 underline whitespace-nowrap"
+                disabled={checkoutMutation.isLoading}
+                onClick={() => checkoutMutation.mutate(nextTierEntry[0])}
+              >
+                {checkoutMutation.isLoading ? 'Redirecting…' : 'Upgrade Plan →'}
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Invite form */}
         <div className="space-y-3">
-          <h4 className="text-sm font-medium text-gray-700 flex items-center gap-1.5"><UserPlus className="w-4 h-4" /> Invite a colleague</h4>
+          <h4 className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+            <UserPlus className="w-4 h-4" /> Invite a colleague
+          </h4>
           <div className="flex gap-2">
             <input
               className="input flex-1"
@@ -333,11 +520,13 @@ function TeamPanel({ currentUser }: { currentUser: any }) {
               placeholder="colleague@firm.com"
               value={inviteEmail}
               onChange={e => setInviteEmail(e.target.value)}
+              disabled={atSeatLimit}
             />
             <select
               className="input w-32"
               value={inviteRole}
               onChange={e => setInviteRole(e.target.value as any)}
+              disabled={atSeatLimit}
             >
               <option value="MANAGER">Manager</option>
               <option value="USER">User</option>
@@ -345,7 +534,7 @@ function TeamPanel({ currentUser }: { currentUser: any }) {
             </select>
             <button
               className="btn-primary whitespace-nowrap"
-              disabled={!inviteEmail || inviteMutation.isLoading}
+              disabled={!inviteEmail || inviteMutation.isLoading || atSeatLimit}
               onClick={() => inviteMutation.mutate()}
             >
               {inviteMutation.isLoading ? 'Sending…' : 'Send invite'}
