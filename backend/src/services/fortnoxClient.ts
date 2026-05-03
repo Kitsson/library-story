@@ -158,6 +158,7 @@ export function mapVouchersToTransactions(
         currency: 'SEK',
         date: new Date(voucher.TransactionDate),
         finalAccount: String(row.Account),
+        finalVatCode: undefined as string | undefined,
         status: 'UNCATEGORIZED' as const,
         integrationId,
       });

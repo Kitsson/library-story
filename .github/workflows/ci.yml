@@ -87,6 +87,8 @@ jobs:
 
       - name: Install frontend deps & build
         run: cd frontend && npm ci && npm run build
+        env:
+          VITE_API_URL: http://localhost:4000/api/v1
 
       - name: Serve frontend
         run: npx --yes serve@14 frontend/dist --listen 5173 &
