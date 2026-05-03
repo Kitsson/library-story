@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { Plug, Check, Plus, Loader2 } from 'lucide-react';
-import { integrationApi } from '@/services/api';
+import { Plug, Check, Plus, Loader2, Upload } from 'lucide-react';
+import { integrationApi, clientApi } from '@/services/api';
 import toast from 'react-hot-toast';
 
 export function IntegrationsPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ provider: 'FORTNOX', name: '', accessToken: '' });
+  const [sie4ClientId, setSie4ClientId] = useState('');
+  const [sie4Uploading, setSie4Uploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
   const { data: integrations } = useQuery('integrations', () => integrationApi.list().then(r => r.data));
@@ -16,6 +19,24 @@ export function IntegrationsPage() {
     onSuccess: () => { queryClient.invalidateQueries('integrations'); setShowForm(false); toast.success('Integration connected!'); },
     onError: (err: any) => { toast.error(err.response?.data?.error || 'Connection failed'); },
   });
+
+  const { data: clientsData } = useQuery('clients-for-sie4', () => clientApi.list().then(r => r.data));
+
+  const handleSIE4Upload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !sie4ClientId) { toast.error('Select a client first.'); return; }
+    setSie4Uploading(true);
+    try {
+      const res = await integrationApi.importSIE4(file, sie4ClientId);
+      toast.success(`${res.data.message} — ${res.data.imported} transactions imported`);
+      queryClient.invalidateQueries('integrations');
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'SIE4 import failed');
+    } finally {
+      setSie4Uploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const providerIcons: Record<string, string> = {
     FORTNOX: 'Fortnox', VISMA_EEKONOMI: 'Visma', BJORN_LUNDEN: 'BL', ECONOMIC: 'e-c', TRIPLETEX: 'TX',
@@ -41,6 +62,33 @@ export function IntegrationsPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* SIE4 File Import */}
+      <div className="card p-6">
+        <h4 className="font-semibold text-gray-900 mb-4">SIE4 File Import</h4>
+        <p className="text-sm text-gray-500 mb-4">Import transactions from any Swedish accounting software by uploading a SIE4 export file (.se / .si / .sie).</p>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[180px]">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Client</label>
+            <select className="input" value={sie4ClientId} onChange={e => setSie4ClientId(e.target.value)}>
+              <option value="">Select client…</option>
+              {clientsData?.clients?.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">SIE4 File</label>
+            <input ref={fileInputRef} type="file" accept=".se,.si,.sie" className="hidden" onChange={handleSIE4Upload} />
+            <button
+              className="btn-primary text-sm"
+              disabled={!sie4ClientId || sie4Uploading}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {sie4Uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
+              {sie4Uploading ? 'Importing…' : 'Upload & Import'}
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Available */}

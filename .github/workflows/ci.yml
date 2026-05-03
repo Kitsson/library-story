@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'claude/**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  typecheck:
+    name: TypeScript
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - name: Backend typecheck
+        run: cd backend && npm ci && npx tsc --noEmit
+      - name: Frontend typecheck
+        run: cd frontend && npm ci && npx tsc --noEmit
+
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: typecheck
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: klary_test
+          POSTGRES_USER: klary
+          POSTGRES_PASSWORD: klary
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://klary:klary@localhost:5432/klary_test
+      JWT_SECRET: ci-test-secret-64-chars-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      NODE_ENV: test
+      PORT: 4000
+      CORS_ORIGIN: http://localhost:5173
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+            package-lock.json
+
+      - name: Install backend deps
+        run: cd backend && npm ci
+
+      - name: Run Prisma migrations
+        run: cd backend && node_modules/.bin/prisma migrate deploy
+
+      - name: Build backend
+        run: cd backend && npm run build
+
+      - name: Start backend
+        run: cd backend && node dist/server.js &
+
+      - name: Install frontend deps & build
+        run: cd frontend && npm ci && npm run build
+
+      - name: Serve frontend
+        run: |
+          npm install -g serve
+          serve frontend/dist -p 5173 &
+
+      - name: Wait for services
+        run: |
+          npx wait-on http://localhost:4000/health http://localhost:5173 --timeout 30000
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Run Playwright tests
+        run: npx playwright test
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

@@ -89,6 +89,12 @@ export const integrationApi = {
   list: () => api.get('/integrations'),
   connect: (data: any) => api.post('/integrations', data),
   providers: () => api.get('/integrations/providers/list'),
+  importSIE4: (file: File, clientId: string) => {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('clientId', clientId);
+    return api.post('/integrations/sie4/import', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
 };
 
 // Email Settings

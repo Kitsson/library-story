@@ -1,12 +1,17 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import multer from 'multer';
 import { prisma } from '../utils/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { encrypt } from '../utils/crypto';
 import { logger } from '../utils/logger';
+import { parseSIE4 } from '../services/sie4Parser';
+import { mapSIE4ToTransactions } from '../services/integrationMapper';
 
 const router = Router();
 router.use(authenticate);
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 // GET /api/v1/integrations - List connected integrations
 router.get('/', async (req: AuthRequest, res, next) => {
@@ -81,6 +86,77 @@ router.get('/providers/list', async (_req: AuthRequest, res) => {
     { id: 'SIE4_FILE', name: 'SIE4 File Import', description: 'Universal - File-based', status: 'available', countries: ['SE', 'NO', 'DK'] },
   ];
   res.json({ providers });
+});
+
+// POST /api/v1/integrations/sie4/import - Import SIE4 file
+router.post('/sie4/import', upload.single('file'), async (req: AuthRequest, res, next) => {
+  try {
+    const { clientId } = req.body;
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded.' });
+    if (!clientId) return res.status(400).json({ error: 'clientId is required.' });
+
+    // Verify client belongs to org
+    const client = await prisma.client.findFirst({
+      where: { id: clientId, organizationId: req.user!.organizationId },
+    });
+    if (!client) return res.status(404).json({ error: 'Client not found.' });
+
+    const content = req.file.buffer.toString('latin1'); // SIE4 uses ISO-8859-1
+    const sie4Data = parseSIE4(content);
+
+    // Find or create integration record for SIE4
+    const integration = await prisma.accountingIntegration.upsert({
+      where: { organizationId_provider: { organizationId: req.user!.organizationId!, provider: 'SIE4_FILE' } },
+      update: { lastSyncAt: new Date() },
+      create: {
+        provider: 'SIE4_FILE',
+        name: `SIE4 - ${sie4Data.company}`,
+        accessToken: 'n/a',
+        organizationId: req.user!.organizationId!,
+        status: 'ACTIVE',
+      },
+    });
+
+    const mapped = mapSIE4ToTransactions(sie4Data.transactions, clientId, integration.id);
+
+    let imported = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+
+    for (const tx of mapped) {
+      try {
+        await prisma.transaction.upsert({
+          where: { clientId_externalId: { clientId, externalId: tx.externalId } },
+          update: {},
+          create: {
+            clientId,
+            externalId: tx.externalId,
+            description: tx.description,
+            amount: tx.amount,
+            currency: tx.currency,
+            date: tx.date,
+            finalAccount: tx.finalAccount,
+            finalVatCode: tx.finalVatCode,
+            status: 'UNCATEGORIZED',
+            integrationId: integration.id,
+          },
+        });
+        imported++;
+      } catch (err) {
+        skipped++;
+        errors.push((err as Error).message);
+      }
+    }
+
+    logger.info(`SIE4 import: ${imported} imported, ${skipped} skipped for org ${req.user!.organizationId}`);
+    res.json({
+      message: `Imported ${imported} transactions from SIE4 file.`,
+      company: sie4Data.company,
+      imported,
+      skipped,
+      errors: errors.slice(0, 10),
+    });
+  } catch (e) { next(e); }
 });
 
 export { router as integrationRouter };
