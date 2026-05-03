@@ -23,6 +23,7 @@ import { integrationRouter, fortnoxOAuthRouter } from './routes/integrations';
 import { dashboardRouter } from './routes/dashboard';
 import { webhookRouter } from './routes/webhooks';
 import { emailSettingsRouter } from './routes/emailSettings';
+import { stripeRouter } from './routes/stripe';
 import { startSyncScheduler } from './utils/syncScheduler';
 import { errorHandler } from './middleware/errorHandler';
 import { requestValidator } from './middleware/requestValidator';
@@ -131,6 +132,7 @@ app.use('/api/v1/integrations', integrationRouter);
 app.use('/api/v1/integrations', fortnoxOAuthRouter); // unauthenticated OAuth callback
 app.use('/api/v1/dashboard', dashboardRouter);
 app.use('/api/v1/email-settings', emailSettingsRouter);
+app.use('/api/v1/stripe', stripeRouter);
 
 // Client portal (public, no auth required for upload)
 app.use('/portal', express.static(path.join(__dirname, '../public/portal')));

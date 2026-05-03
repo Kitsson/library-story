@@ -46,8 +46,8 @@ router.post('/create-checkout-session', async (req, res) => {
       customer_email: email,
       line_items: [{ price: priceId, quantity: 1 }],
       mode: 'subscription',
-      success_url: `${process.env.APP_URL}/register?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.APP_URL}/pricing?canceled=true`,
+      success_url: `${process.env.FRONTEND_URL || process.env.APP_URL}/register?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.FRONTEND_URL || process.env.APP_URL}/#pricing`,
       metadata: { plan, billing },
       subscription_data: {
         trial_period_days: 14,
