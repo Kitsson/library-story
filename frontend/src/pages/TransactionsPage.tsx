@@ -99,17 +99,17 @@ export function TransactionsPage() {
         </div>
       )}
 
-      <div className="card overflow-hidden">
+      <div className="card overflow-x-auto">
         {isLoading ? <div className="p-8 text-center text-gray-400">Loading...</div> : (
-          <table className="w-full">
+          <table className="w-full min-w-[700px]">
             <thead className="bg-gray-50">
               <tr>
-                <th className="table-header">Date</th>
+                <th className="table-header w-24">Date</th>
                 <th className="table-header">Description</th>
-                <th className="table-header">Amount</th>
-                <th className="table-header">Status</th>
-                <th className="table-header">AI Suggestion</th>
-                <th className="table-header">Actions</th>
+                <th className="table-header w-28">Amount</th>
+                <th className="table-header w-32">Status</th>
+                <th className="table-header w-56">AI Suggestion</th>
+                <th className="table-header w-24 text-right pr-4 sticky right-0 bg-gray-50 shadow-[-8px_0_8px_-4px_rgba(0,0,0,0.06)]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -117,24 +117,27 @@ export function TransactionsPage() {
                 <tr><td colSpan={6} className="table-cell text-center text-gray-400 py-8">No transactions found.</td></tr>
               )}
               {data?.transactions?.map((tx: any) => (
-                <tr key={tx.id} className="hover:bg-gray-50">
-                  <td className="table-cell text-gray-500">{new Date(tx.date).toLocaleDateString()}</td>
+                <tr key={tx.id} className="group hover:bg-gray-50">
+                  <td className="table-cell text-gray-500 whitespace-nowrap">{new Date(tx.date).toLocaleDateString()}</td>
                   <td className="table-cell">{tx.description || '—'}</td>
-                  <td className="table-cell font-medium">{tx.amount.toLocaleString()} {tx.currency}</td>
+                  <td className="table-cell font-medium whitespace-nowrap">{tx.amount.toLocaleString()} {tx.currency}</td>
                   <td className="table-cell"><span className={statusColors[tx.status] || 'badge-blue'}>{tx.status.replace(/_/g, ' ')}</span></td>
                   <td className="table-cell">
                     {tx.suggestedAccount ? (
                       <div className="flex items-center gap-1.5">
-                        <div>
+                        <div className="min-w-0">
                           <span className="text-sm font-medium text-klary-700">{tx.suggestedAccount}</span>
+                          {tx.suggestedAccountName && (
+                            <span className="text-xs text-gray-500 ml-1 truncate">· {tx.suggestedAccountName}</span>
+                          )}
                           {tx.aiConfidence && (
-                            <span className={`text-xs ml-2 ${tx.aiConfidence >= 0.8 ? 'text-emerald-600' : tx.aiConfidence >= 0.6 ? 'text-yellow-600' : 'text-gray-400'}`}>
+                            <span className={`text-xs ml-1 ${tx.aiConfidence >= 0.8 ? 'text-emerald-600' : tx.aiConfidence >= 0.6 ? 'text-yellow-600' : 'text-gray-400'}`}>
                               {(tx.aiConfidence * 100).toFixed(0)}%
                             </span>
                           )}
                         </div>
                         {tx.aiReasoning && (
-                          <div className="relative">
+                          <div className="relative shrink-0">
                             <button
                               onMouseEnter={() => setTooltip(tx.id)}
                               onMouseLeave={() => setTooltip(null)}
@@ -153,8 +156,8 @@ export function TransactionsPage() {
                       </div>
                     ) : <span className="text-gray-400">—</span>}
                   </td>
-                  <td className="table-cell">
-                    <div className="flex gap-2">
+                  <td className="table-cell text-right pr-4 sticky right-0 bg-white group-hover:bg-gray-50 shadow-[-8px_0_8px_-4px_rgba(0,0,0,0.06)]">
+                    <div className="flex gap-2 justify-end">
                       {tx.status === 'UNCATEGORIZED' && (
                         <button onClick={() => categorizeMutation.mutate(tx.id)}
                           disabled={categorizeMutation.isLoading || quotaAtLimit}

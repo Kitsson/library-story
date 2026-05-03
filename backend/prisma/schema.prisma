@@ -263,11 +263,12 @@ model Transaction {
   date        DateTime
   
   // AI Categorization
-  suggestedAccount   String? @map("suggested_account")
-  suggestedVatCode   String? @map("suggested_vat_code")
-  suggestedCostCenter String? @map("suggested_cost_center")
-  aiConfidence       Float?  @map("ai_confidence")
-  aiReasoning        String? @map("ai_reasoning")
+  suggestedAccount     String? @map("suggested_account")
+  suggestedAccountName String? @map("suggested_account_name")
+  suggestedVatCode     String? @map("suggested_vat_code")
+  suggestedCostCenter  String? @map("suggested_cost_center")
+  aiConfidence         Float?  @map("ai_confidence")
+  aiReasoning          String? @map("ai_reasoning")
   
   // Final categorization
   finalAccount       String? @map("final_account")

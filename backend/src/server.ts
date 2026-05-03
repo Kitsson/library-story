@@ -3,12 +3,13 @@
  * Express + TypeScript + Prisma + Security Hardening
  */
 
+import 'dotenv/config';
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
-import dotenv from 'dotenv';
 import path from 'path';
 
 import { authRouter } from './routes/auth';
@@ -30,8 +31,6 @@ import { errorHandler } from './middleware/errorHandler';
 import { requestValidator } from './middleware/requestValidator';
 import { logger } from './utils/logger';
 import { startScheduler } from './scheduler';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -203,7 +202,7 @@ app.use(errorHandler);
 app.listen(PORT, () => {
   logger.info(`🚀 KLARY Server running on port ${PORT}`);
   logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-  logger.info(`🔒 CORS origin: ${corsOrigin}`);
+  logger.info(`🔒 CORS origin: ${corsAllowedOrigins.join(', ')}`);
   startScheduler();
 });
 

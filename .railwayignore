@@ -1,0 +1,15 @@
+node_modules/
+**/node_modules/
+.env
+*.log
+**/dist/
+frontend/
+klary-project/
+klary-project.zip
+klary-landing-stripe.zip
+landing/
+docker/
+tests/
+playwright.config.ts
+.git/
+.playwright-mcp/
