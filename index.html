@@ -220,7 +220,7 @@
         <a href="#faq">FAQ</a>
       </div>
       <div class="nav-cta" style="display:flex;align-items:center;gap:1rem;">
-        <a href="https://library-story-production.up.railway.app/login" style="font-size:0.875rem;font-weight:500;color:var(--text-secondary);">Log in</a>
+        <a href="https://klaryproject-kitmedia01-7501s-projects.vercel.app/login" style="font-size:0.875rem;font-weight:500;color:var(--text-secondary);">Log in</a>
         <a href="#pricing" class="btn btn-sm btn-primary">Start Free Trial</a>
       </div>
       <button class="mobile-toggle" onclick="document.querySelector('.nav-links').style.display = document.querySelector('.nav-links').style.display === 'flex' ? 'none' : 'flex'"><span></span><span></span><span></span></button>
@@ -532,11 +532,10 @@
   </footer>
 
   <script>
-    // CONFIG - Replace these with your actual values
     const CONFIG = {
       API_URL: 'https://library-story-production.up.railway.app',
       STRIPE_PUBLIC_KEY: 'pk_live_MTScWH63nN2FW01mAhMJY4gC00SITGFszW',
-      APP_REGISTER_URL: 'https://library-story-production.up.railway.app/register'
+      APP_REGISTER_URL: 'https://klaryproject-kitmedia01-7501s-projects.vercel.app/register'
     };
 
     // Pricing data
@@ -578,7 +577,7 @@
       btn.classList.add('pricing-btn-loading');
 
       try {
-        const response = await fetch(CONFIG.API_URL + '/api/stripe/create-checkout-session', {
+        const response = await fetch(CONFIG.API_URL + '/api/v1/stripe/create-checkout-session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

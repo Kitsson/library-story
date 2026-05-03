@@ -64,6 +64,8 @@ export const transactionApi = {
   categorize: (id: string) => api.post(`/transactions/${id}/categorize`),
   confirm: (id: string, data: any) => api.post(`/transactions/${id}/confirm`, data),
   bulkCategorize: (ids: string[]) => api.post('/transactions/bulk-categorize', { ids }),
+  seedDemo: () => api.post('/transactions/seed-demo'),
+  exportCsv: (params?: any) => api.get('/transactions/export/csv', { params, responseType: 'blob' }),
 };
 
 // Advisory
@@ -87,6 +89,13 @@ export const integrationApi = {
   list: () => api.get('/integrations'),
   connect: (data: any) => api.post('/integrations', data),
   providers: () => api.get('/integrations/providers/list'),
+  importSIE4: (file: File, clientId: string) => {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('clientId', clientId);
+    return api.post('/integrations/sie4/import', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  sync: (id: string) => api.post(`/integrations/${id}/sync`),
 };
 
 // Email Settings

@@ -55,6 +55,7 @@ model User {
 model Organization {
   id          String   @id @default(uuid())
   name        String
+  email       String?
   orgNumber   String?  @unique @map("org_number")
   address     String?
   city        String?
@@ -87,8 +88,12 @@ model Organization {
   emailNotifyOnUpload Boolean @default(true) @map("email_notify_on_upload")
 
   // Billing
-  stripeCustomerId String? @map("stripe_customer_id")
-  
+  stripeCustomerId     String?   @map("stripe_customer_id")
+  stripeSubscriptionId String?   @map("stripe_subscription_id")
+  subscriptionStatus   String    @default("TRIAL") @map("subscription_status")
+  trialEndsAt          DateTime? @map("trial_ends_at")
+  billing              String    @default("monthly")
+
   // Audit
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
