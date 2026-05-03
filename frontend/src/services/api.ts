@@ -64,6 +64,8 @@ export const transactionApi = {
   categorize: (id: string) => api.post(`/transactions/${id}/categorize`),
   confirm: (id: string, data: any) => api.post(`/transactions/${id}/confirm`, data),
   bulkCategorize: (ids: string[]) => api.post('/transactions/bulk-categorize', { ids }),
+  seedDemo: () => api.post('/transactions/seed-demo'),
+  exportCsv: (params?: any) => api.get('/transactions/export/csv', { params, responseType: 'blob' }),
 };
 
 // Advisory
