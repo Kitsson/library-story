@@ -54,38 +54,51 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: |
+            package-lock.json
             backend/package-lock.json
             frontend/package-lock.json
-            package-lock.json
+
+      - name: Install root deps (Playwright)
+        run: npm ci
 
       - name: Install backend deps
         run: cd backend && npm ci
 
-      - name: Run Prisma migrations
-        run: cd backend && node_modules/.bin/prisma migrate deploy
+      - name: Setup database
+        run: |
+          cd backend
+          node_modules/.bin/prisma generate
+          node_modules/.bin/prisma db push --accept-data-loss
 
       - name: Build backend
         run: cd backend && npm run build
 
       - name: Start backend
-        run: cd backend && node dist/server.js &
+        run: |
+          cd backend
+          node dist/server.js &
+          echo "Backend started"
 
       - name: Install frontend deps & build
         run: cd frontend && npm ci && npm run build
 
       - name: Serve frontend
-        run: |
-          npm install -g serve
-          serve frontend/dist -p 5173 &
+        run: npx --yes serve@14 frontend/dist --listen 5173 &
 
-      - name: Wait for services
+      - name: Wait for services to be ready
         run: |
-          npx wait-on http://localhost:4000/health http://localhost:5173 --timeout 30000
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:4000/health && curl -sf http://localhost:5173 && echo "Services ready" && exit 0
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+          echo "Services did not start in time" && exit 1
 
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
