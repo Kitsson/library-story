@@ -19,10 +19,11 @@ import { transactionRouter } from './routes/transactions';
 import { advisoryRouter } from './routes/advisory';
 import { documentRequestRouter } from './routes/documentRequests';
 import { uploadRouter } from './routes/uploads';
-import { integrationRouter } from './routes/integrations';
+import { integrationRouter, fortnoxOAuthRouter } from './routes/integrations';
 import { dashboardRouter } from './routes/dashboard';
 import { webhookRouter } from './routes/webhooks';
 import { emailSettingsRouter } from './routes/emailSettings';
+import { startSyncScheduler } from './utils/syncScheduler';
 import { errorHandler } from './middleware/errorHandler';
 import { requestValidator } from './middleware/requestValidator';
 import { logger } from './utils/logger';
@@ -127,6 +128,7 @@ app.use('/api/v1/advisory', advisoryRouter);
 app.use('/api/v1/document-requests', documentRequestRouter);
 app.use('/api/v1/uploads', uploadRouter);
 app.use('/api/v1/integrations', integrationRouter);
+app.use('/api/v1/integrations', fortnoxOAuthRouter); // unauthenticated OAuth callback
 app.use('/api/v1/dashboard', dashboardRouter);
 app.use('/api/v1/email-settings', emailSettingsRouter);
 
@@ -179,6 +181,10 @@ app.listen(PORT, () => {
   logger.info(`🚀 KLARY Server running on port ${PORT}`);
   logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   logger.info(`🔒 CORS origin: ${corsOrigin}`);
+
+  if (process.env.FORTNOX_CLIENT_ID) {
+    startSyncScheduler();
+  }
 });
 
 export { app };

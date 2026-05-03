@@ -95,6 +95,7 @@ export const integrationApi = {
     form.append('clientId', clientId);
     return api.post('/integrations/sie4/import', form, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
+  sync: (id: string) => api.post(`/integrations/${id}/sync`),
 };
 
 // Email Settings

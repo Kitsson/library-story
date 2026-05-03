@@ -3,10 +3,15 @@ import { z } from 'zod';
 import multer from 'multer';
 import { prisma } from '../utils/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
-import { encrypt } from '../utils/crypto';
+import { encrypt, decrypt, hashValue } from '../utils/crypto';
 import { logger } from '../utils/logger';
 import { parseSIE4 } from '../services/sie4Parser';
 import { mapSIE4ToTransactions } from '../services/integrationMapper';
+import {
+  buildAuthorizeUrl, exchangeCode, refreshAccessToken,
+  FortnoxClient, mapVouchersToTransactions,
+} from '../services/fortnoxClient';
+import { runSync } from '../utils/syncScheduler';
 
 const router = Router();
 router.use(authenticate);
@@ -156,6 +161,135 @@ router.post('/sie4/import', upload.single('file'), async (req: AuthRequest, res,
       skipped,
       errors: errors.slice(0, 10),
     });
+  } catch (e) { next(e); }
+});
+
+// ============================================
+// Fortnox OAuth
+// ============================================
+
+function fortnoxRedirectUri(): string {
+  const appUrl = process.env.APP_URL || 'http://localhost:4000';
+  return `${appUrl}/api/v1/integrations/fortnox/callback`;
+}
+
+// GET /api/v1/integrations/fortnox/authorize
+// Redirects the user to Fortnox OAuth consent screen
+router.get('/fortnox/authorize', async (req: AuthRequest, res) => {
+  const orgId = req.user!.organizationId!;
+  // State = hash of orgId so callback can verify it
+  const state = Buffer.from(JSON.stringify({ orgId, ts: Date.now() })).toString('base64url');
+  const url = buildAuthorizeUrl(fortnoxRedirectUri(), state);
+  res.redirect(url);
+});
+
+// GET /api/v1/integrations/fortnox/callback  (called by Fortnox — no auth middleware)
+// Must be added BEFORE router.use(authenticate), so we define it on a separate mini-router
+// below and mount it unauthenticated in server.ts via /api/v1/integrations-oauth
+const oauthRouter = Router();
+oauthRouter.get('/fortnox/callback', async (req, res) => {
+  const { code, state, error } = req.query as Record<string, string>;
+  const frontendUrl = process.env.APP_URL || 'http://localhost:5173';
+
+  if (error || !code || !state) {
+    return res.redirect(`${frontendUrl}/integrations?error=fortnox_denied`);
+  }
+
+  let orgId: string;
+  try {
+    const decoded = JSON.parse(Buffer.from(state, 'base64url').toString());
+    orgId = decoded.orgId;
+    if (!orgId) throw new Error('missing orgId');
+  } catch {
+    return res.redirect(`${frontendUrl}/integrations?error=invalid_state`);
+  }
+
+  try {
+    const tokens = await exchangeCode(code, fortnoxRedirectUri());
+
+    await prisma.accountingIntegration.upsert({
+      where: { organizationId_provider: { organizationId: orgId, provider: 'FORTNOX' } },
+      update: {
+        accessToken: encrypt(tokens.accessToken),
+        refreshToken: encrypt(tokens.refreshToken),
+        tokenExpiry: tokens.expiresAt,
+        status: 'ACTIVE',
+        lastSyncAt: null,
+      },
+      create: {
+        provider: 'FORTNOX',
+        name: 'Fortnox',
+        accessToken: encrypt(tokens.accessToken),
+        refreshToken: encrypt(tokens.refreshToken),
+        tokenExpiry: tokens.expiresAt,
+        organizationId: orgId,
+        status: 'ACTIVE',
+      },
+    });
+
+    logger.info(`Fortnox OAuth connected for org ${orgId}`);
+    res.redirect(`${frontendUrl}/integrations?connected=fortnox`);
+  } catch (err) {
+    logger.error(`Fortnox OAuth callback error: ${(err as Error).message}`);
+    res.redirect(`${frontendUrl}/integrations?error=fortnox_failed`);
+  }
+});
+
+export { oauthRouter as fortnoxOAuthRouter };
+
+// POST /api/v1/integrations/:id/sync - Manual sync trigger
+router.post('/:id/sync', async (req: AuthRequest, res, next) => {
+  try {
+    const integration = await prisma.accountingIntegration.findFirst({
+      where: { id: req.params.id, organizationId: req.user!.organizationId },
+    });
+    if (!integration) return res.status(404).json({ error: 'Integration not found.' });
+    if (integration.provider !== 'FORTNOX') return res.status(400).json({ error: 'Manual sync only supported for Fortnox.' });
+
+    // Refresh token if needed
+    let accessToken: string;
+    const expirySoon = integration.tokenExpiry
+      ? integration.tokenExpiry.getTime() - Date.now() < 5 * 60 * 1000
+      : true;
+
+    if (expirySoon && integration.refreshToken) {
+      const tokens = await refreshAccessToken(integration.refreshToken);
+      await prisma.accountingIntegration.update({
+        where: { id: integration.id },
+        data: { accessToken: encrypt(tokens.accessToken), refreshToken: encrypt(tokens.refreshToken), tokenExpiry: tokens.expiresAt },
+      });
+      accessToken = tokens.accessToken;
+    } else {
+      accessToken = decrypt(integration.accessToken);
+    }
+
+    const client = await prisma.client.findFirst({
+      where: { organizationId: req.user!.organizationId },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (!client) return res.status(400).json({ error: 'No clients found. Create a client first.' });
+
+    const fromDate = integration.lastSyncAt || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    const fortnox = new FortnoxClient(accessToken);
+    const vouchers = await fortnox.fetchVouchers(fromDate);
+    const mapped = mapVouchersToTransactions(vouchers, client.id, integration.id);
+
+    let imported = 0;
+    for (const tx of mapped) {
+      await prisma.transaction.upsert({
+        where: { clientId_externalId: { clientId: tx.clientId, externalId: tx.externalId } },
+        update: {},
+        create: tx,
+      });
+      imported++;
+    }
+
+    await prisma.accountingIntegration.update({
+      where: { id: integration.id },
+      data: { lastSyncAt: new Date(), status: 'ACTIVE' },
+    });
+
+    res.json({ message: `Sync complete. Imported ${imported} transactions.`, imported });
   } catch (e) { next(e); }
 });
 

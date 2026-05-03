@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { Plug, Check, Plus, Loader2, Upload } from 'lucide-react';
+import { Plug, Check, Plus, Loader2, Upload, RefreshCw, ExternalLink } from 'lucide-react';
 import { integrationApi, clientApi } from '@/services/api';
 import toast from 'react-hot-toast';
 
@@ -21,6 +21,24 @@ export function IntegrationsPage() {
   });
 
   const { data: clientsData } = useQuery('clients-for-sie4', () => clientApi.list().then(r => r.data));
+
+  const syncMutation = useMutation((id: string) => integrationApi.sync(id), {
+    onSuccess: (res: any) => { queryClient.invalidateQueries('integrations'); toast.success(res.data.message); },
+    onError: (err: any) => { toast.error(err.response?.data?.error || 'Sync failed'); },
+  });
+
+  // Show toast if redirected back after OAuth
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('connected') === 'fortnox') {
+      toast.success('Fortnox connected!');
+      queryClient.invalidateQueries('integrations');
+      window.history.replaceState({}, '', '/integrations');
+    } else if (params.get('error')) {
+      toast.error(`Connection failed: ${params.get('error')}`);
+      window.history.replaceState({}, '', '/integrations');
+    }
+  }, []);
 
   const handleSIE4Upload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -132,7 +150,28 @@ export function IntegrationsPage() {
                   </div>
                 </div>
                 {isConnected ? (
-                  <span className="flex items-center gap-1 text-sm text-emerald-600 font-medium"><Check className="w-4 h-4" /> Connected</span>
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1 text-sm text-emerald-600 font-medium"><Check className="w-4 h-4" /> Connected</span>
+                    {p.id === 'FORTNOX' && (
+                      <button
+                        className="text-xs text-klary-600 hover:text-klary-800 flex items-center gap-1"
+                        disabled={syncMutation.isLoading}
+                        onClick={() => {
+                          const id = integrations?.integrations?.find((i: any) => i.provider === 'FORTNOX')?.id;
+                          if (id) syncMutation.mutate(id);
+                        }}
+                      >
+                        <RefreshCw className={`w-3 h-3 ${syncMutation.isLoading ? 'animate-spin' : ''}`} /> Sync
+                      </button>
+                    )}
+                  </div>
+                ) : p.id === 'FORTNOX' ? (
+                  <a
+                    href="/api/v1/integrations/fortnox/authorize"
+                    className="flex items-center gap-1 text-sm text-klary-600 font-medium hover:text-klary-800"
+                  >
+                    <ExternalLink className="w-4 h-4" /> Connect
+                  </a>
                 ) : (
                   <span className={`text-xs px-2 py-1 rounded ${p.status === 'coming_soon' ? 'bg-gray-100 text-gray-500' : 'bg-klary-100 text-klary-700'}`}>
                     {p.status === 'coming_soon' ? 'Coming Soon' : 'Available'}
