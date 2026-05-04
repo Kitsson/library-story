@@ -220,8 +220,8 @@
         <a href="#faq">FAQ</a>
       </div>
       <div class="nav-cta" style="display:flex;align-items:center;gap:1rem;">
-        <a href="https://library-story-production.up.railway.app/login" style="font-size:0.875rem;font-weight:500;color:var(--text-secondary);">Log in</a>
-        <a href="#pricing" class="btn btn-sm btn-primary">Start Free Trial</a>
+        <a href="https://klaryproject-mu.vercel.app/login" style="font-size:0.875rem;font-weight:500;color:var(--text-secondary);">Log in</a>
+        <a href="https://klaryproject-mu.vercel.app/register" class="btn btn-sm btn-primary">Start Free Trial</a>
       </div>
       <button class="mobile-toggle" onclick="document.querySelector('.nav-links').style.display = document.querySelector('.nav-links').style.display === 'flex' ? 'none' : 'flex'"><span></span><span></span><span></span></button>
     </div>
@@ -239,7 +239,7 @@
           <h1 class="hero-headline">Reclaim <em>18 hours</em> every week. Without hiring anyone.</h1>
           <p class="hero-sub">KLARY is the intelligence layer that sits on top of your accounting software. It automatically tracks your time, categorizes transactions with AI, and turns your "free advice" into billable advisory revenue.</p>
           <div class="hero-cta-group">
-            <a href="#pricing" class="btn btn-primary">Start 14-Day Free Trial — No Card Required</a>
+            <a href="https://klaryproject-mu.vercel.app/register" class="btn btn-primary">Start 14-Day Free Trial — No Card Required</a>
             <a href="#demo" class="btn btn-secondary">Watch 2-Min Demo</a>
           </div>
           <div class="hero-guarantee">
@@ -509,7 +509,7 @@
       <div class="cta-section fade-in">
         <h2>Stop working 55 hours and billing for 32.</h2>
         <p>Join 200+ accounting firms across Scandinavia who've reclaimed their time — and their sanity — with KLARY.</p>
-        <a href="#pricing" class="cta-btn">Start Your 14-Day Free Trial<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a>
+        <a href="https://klaryproject-mu.vercel.app/register" class="cta-btn">Start Your 14-Day Free Trial<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a>
         <p style="font-size:0.8125rem;opacity:0.7;margin-top:1.5rem;">No credit card required · Cancel anytime · Set up in 15 minutes</p>
       </div>
     </div>
@@ -532,11 +532,9 @@
   </footer>
 
   <script>
-    // CONFIG - Replace these with your actual values
+    // CONFIG
     const CONFIG = {
-      API_URL: 'https://library-story-production.up.railway.app',
-      STRIPE_PUBLIC_KEY: 'pk_live_MTScWH63nN2FW01mAhMJY4gC00SITGFszW',
-      APP_REGISTER_URL: 'https://library-story-production.up.railway.app/register'
+      APP_URL: 'https://klaryproject-mu.vercel.app'
     };
 
     // Pricing data
@@ -566,37 +564,12 @@
       });
     }
 
-    async function startCheckout(plan) {
+    function startCheckout(plan) {
       if (plan === 'klarfirm') {
-        // Contact sales for enterprise
         window.location.href = 'mailto:sales@klary.ai?subject=KlarFirm Enterprise Inquiry';
         return;
       }
-
-      const btn = document.getElementById(plan + '-btn');
-      btn.disabled = true;
-      btn.classList.add('pricing-btn-loading');
-
-      try {
-        const response = await fetch(CONFIG.API_URL + '/api/stripe/create-checkout-session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            plan: plan,
-            billing: currentBilling,
-            priceId: PRICING[currentBilling][plan].stripePriceId
-          })
-        });
-
-        const { sessionId } = await response.json();
-        const stripe = Stripe(CONFIG.STRIPE_PUBLIC_KEY);
-        await stripe.redirectToCheckout({ sessionId });
-      } catch (error) {
-        console.error('Checkout error:', error);
-        alert('Something went wrong. Please try again or contact support.');
-        btn.disabled = false;
-        btn.classList.remove('pricing-btn-loading');
-      }
+      window.location.href = CONFIG.APP_URL + '/register?plan=' + plan;
     }
 
     // Fade in on scroll
