@@ -79,6 +79,7 @@ export function TimeTrackingPage() {
               e.preventDefault();
               createMutation.mutate({
                 ...form,
+                clientId: form.clientId || undefined,
                 duration: form.duration * 60,
                 startedAt: new Date(Date.now() - form.duration * 60000).toISOString(),
                 endedAt: new Date().toISOString(),
