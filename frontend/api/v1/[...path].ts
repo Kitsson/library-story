@@ -19,21 +19,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  let body: Buffer | undefined;
+  let body: ArrayBuffer | undefined;
   if (req.method !== 'GET' && req.method !== 'HEAD') {
-    const chunks: Buffer[] = [];
+    const parts: number[] = [];
     await new Promise<void>((resolve, reject) => {
-      req.on('data', (chunk: Buffer) => chunks.push(chunk));
+      req.on('data', (chunk: Buffer) => chunk.forEach((b: number) => parts.push(b)));
       req.on('end', resolve);
       req.on('error', reject);
     });
-    if (chunks.length > 0) body = Buffer.concat(chunks);
+    if (parts.length > 0) body = new Uint8Array(parts).buffer as ArrayBuffer;
   }
 
   const upstreamRes = await fetch(targetUrl, {
     method: req.method,
     headers,
-    body: body,
+    body: body ?? null,
   });
 
   res.status(upstreamRes.status);
